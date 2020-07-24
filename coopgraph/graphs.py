@@ -92,6 +92,9 @@ class Edge(object):
         else:
             return False
 
+    def eucledian_distance(self):
+        return self.length
+
     def enabled(self, ignored_disablers: set = None):
         if ignored_disablers is None:
             ignored_disablers = set()
