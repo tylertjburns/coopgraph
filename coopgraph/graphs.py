@@ -2,7 +2,7 @@
 A simple Python graph class, demonstrating the essential
 facts and functionalities of graphs.
 """
-from coopgraph.dataStructs import IVector
+from coopstructs.vectors import IVector
 from enum import Enum
 from typing import List, Dict, Callable
 import uuid
