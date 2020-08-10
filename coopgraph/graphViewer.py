@@ -4,7 +4,7 @@ import sys, os, getopt
 # Import and initialize the pygame library
 import pygame
 from coopgraph.graphs import Graph, Edge, Node
-from coopgraph.dataStructs import Vector2, IVector
+from coopstructs.vectors import Vector2, IVector
 import csv
 from typing import Dict
 

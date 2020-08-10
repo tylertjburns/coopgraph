@@ -2,7 +2,7 @@
 Logical Graph Builder that can be used for various problems that can be modeled as a graph data structure
 
 An Example:
-``` 
+```
 from Graphs import Graph, Node
 from dataStructs import Vector2
 
