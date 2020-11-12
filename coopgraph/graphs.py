@@ -8,14 +8,17 @@ from typing import List, Dict, Callable
 import uuid
 import logging
 import copy
+from pprint import pformat
 
 class EdgeDirection(Enum):
     ONEWAY = 1
     TWOWAY = 2
+    FROM = 3
+    TO = 4
 
 class Node(object):
     def __init__(self, name:str, pos: IVector):
-        if not isinstance(pos, IVector):
+        if not isinstance(pos, IVector) :
             raise TypeError(f"position must be of type {type(IVector)}, but {type(pos)} was provided")
 
         self.name = name
@@ -36,9 +39,9 @@ class Node(object):
     def __repr__(self):
         return self.__str__()
 
-class AStarNode():
+class _AStarMetrics():
     def __init__(self, parent, graph_node: Node):
-        if not (isinstance(parent, AStarNode) or parent is None):
+        if not (isinstance(parent, _AStarMetrics) or parent is None):
             raise TypeError(f"Astar parent must be AStarNode or None, {type(parent)} was given")
 
         if not (isinstance(graph_node, Node)):
@@ -51,7 +54,7 @@ class AStarNode():
         self.f = 0
 
     def __eq__(self, other):
-        if isinstance(other, AStarNode) and other.graph_node == self.graph_node:
+        if isinstance(other, _AStarMetrics) and other.graph_node == self.graph_node:
             return True
         else:
             return False
@@ -60,7 +63,14 @@ class AStarNode():
         return self.graph_node.__hash__()
 
     def __repr__(self):
-        return self.graph_node.__str__()
+        return f"{self.graph_node} g: {self.g} h: {self.h} f: {self.f}"
+
+
+class AStarResults:
+    def __init__(self, path, steps):
+        self.path = path
+        self.steps = steps
+
 
 class Edge(object):
     def __init__(self, nodeA: Node, nodeB: Node, edge_direction=None):
@@ -87,6 +97,12 @@ class Edge(object):
         return self.__str__()
 
     def __eq__(self, other):
+        if isinstance(other, Edge) and other.id == self.id:
+            return True
+        else:
+            return False
+
+    def matches_profile_of(self, other):
         if isinstance(other, Edge) and other.start == self.start and self.end == other.end:
             return True
         else:
@@ -98,7 +114,7 @@ class Edge(object):
     def enabled(self, ignored_disablers: set = None):
         if ignored_disablers is None:
             ignored_disablers = set()
-        return True if len(self._disablers - ignored_disablers) == 0 else False
+        return self._disablers.issubset(ignored_disablers)
 
 
     def remove_disabler(self, disabler):
@@ -151,14 +167,21 @@ class Graph(object):
 
 
     def _build_maps(self):
+        # self.__graph_dict is a first class citizen. Therefore update all the others off of an updated graph_dict
+        self._graph_dict = self.__generate_graph_dict(self._edges)
+
+        # update remaining maps assuming graph_dict is accurate
         self._pos_edge_map = self.__generate_pos_edge_map(self._edges)
         self._node_edge_map = self.__generate_node_edge_map(self._edges)
         self._pos_node_map = self.__generate_position_node_map(self._nodes)
-        self._graph_dict = self.__generate_graph_dict(self._edges)
         self._node_by_name_map = self.__generate_node_by_name_map(self._nodes)
 
     def __generate_node_edge_map(self, edges: Dict[str, Edge]):
         node_edge_map = {}
+
+        for node in self._graph_dict.keys():
+            node_edge_map[node] = []
+
         for id, edge in edges.items():
             node_edge_map.setdefault(edge.start, []).append(edge.id)
             node_edge_map.setdefault(edge.end, []).append(edge.id)
@@ -204,11 +227,34 @@ class Graph(object):
 
     def nodes(self):
         """ returns the vertices of a graph """
-        return copy.deepcopy([node for id, node in self._nodes.items()])
+        # return copy.deepcopy([node for id, node in self._nodes.items()])
+        return ([node for id, node in self._nodes.items()])
 
     def edges(self):
         """ returns the edges of a graph """
-        return copy.deepcopy([edge for id, edge in self._edges.items()])
+        # return copy.deepcopy([edge for id, edge in self._edges.items()])
+        return ([edge for id, edge in self._edges.items()])
+
+    def add_node_with_connnections(self, node: Node, connections: Dict[Node, EdgeDirection]):
+        self.add_node(node)
+        edges = []
+
+        provided = set(connections.values())
+        valid = {EdgeDirection.TWOWAY, EdgeDirection.FROM, EdgeDirection.TO}
+        if not provided.issubset(valid):
+            errors = provided.difference(valid)
+            raise NotImplementedError(f"Connections can only be supplied as {EdgeDirection.TWOWAY._name_}, {EdgeDirection.FROM._name_}, {EdgeDirection.TO._name_}. However, {errors} were provided.")
+
+        for connection, direction in connections.items():
+            if direction == EdgeDirection.TWOWAY:
+                edges.append(Edge(node, connection))
+                edges.append(Edge(connection, node))
+            elif direction == EdgeDirection.TO:
+                edges.append(Edge(node, connection))
+            elif direction == EdgeDirection.FROM:
+                edges.append(Edge(connection, node))
+
+        self.add_edges(edges)
 
     def add_node(self, node):
         """ If the vertex "vertex" is not in
@@ -360,7 +406,8 @@ class Graph(object):
         return None
 
 
-
+    def edge_between(self, nodeA: Node, nodeB: Node):
+        return self._edge_at(nodeA.pos, nodeB.pos)
 
 
     def __str__(self):
@@ -520,77 +567,99 @@ class Graph(object):
             return False
         return True
 
-    def astar(self, start: Node, end: Node, g_func: Callable[[Node, Node], float] = None, h_func: Callable[[Node, Node], float] = None, ignored_disablers:List[str]=None) -> List[Node]:
+    def astar(self, start: Node, end: Node, g_func: Callable[[Node, Node], float] = None, h_func: Callable[[Node, Node], float] = None, ignored_disablers:List[str]=None) -> AStarResults:
 
-        """Returns a list of tuples as a path from the given start to the given end in the given graph"""
-        # print(f"Performing A* over map of length: {len(self.__graph_dict)}")
+        if not ignored_disablers:
+            ignored_disablers = []
+
+        """Returns a list of nodes as a path from the given start to the given end in the given graph"""
+        logging.debug(f"Performing A* over map of length: {len(self._graph_dict)}")
 
         # Create start and end node
-        start_node = AStarNode(None, start)
-        end_node = AStarNode(None, end)
+        start_iter = _AStarMetrics(None, start)
+        end_iter = _AStarMetrics(None, end)
+
+        steps = {}
 
         # Initialize both open and closed list
         open_set = set()
         closed_set = set()
 
         # Add the start node
-        open_set.add(start_node)
+        open_set.add(start_iter)
 
+        cc = -1
+
+
+        results = None
         # Loop until you find the end
         while len(open_set) > 0:
+            cc += 1
 
             # Find the node on open list with the least F value
-            current_node = next(iter(open_set))
+            current_item = next(iter(open_set))
             for open_item in open_set:
-                if open_item.f < current_node.f:
-                    current_node = open_item
+                if open_item.f < current_item.f:
+                    current_item = open_item
+
+            steps[cc] = {"open_set": set(open_set), "closed_set": set(closed_set), "current_item": current_item}
 
             # Pop current off open list, add to closed list
-            open_set.remove(current_node)
-            closed_set.add(current_node)
+            open_set.remove(current_item)
+            closed_set.add(current_item)
 
             # Found the goal
-            if current_node == end_node:
+            if current_item == end_iter:
                 path = []
-                current = current_node
+                current = current_item
                 while current is not None:
                     path.append(current.graph_node)
                     current = current.parent
-                return path[::-1]  # Return reversed path
+
+                results = AStarResults(path[::-1], steps)  # Return reversed path
+                break
 
             # Generate children
-            children = []
-            for new_graph_node in self._graph_dict[current_node.graph_node]:  # Adjacent nodes
-                edge = self._edge_at(current_node.graph_node.pos, new_graph_node.pos)
-                if edge.enabled() or all(elem in ignored_disablers for elem in edge.disablers()):
-                    # Create new node
-                    new_node = AStarNode(current_node, new_graph_node)
-
-                    # Append
-                    children.append(new_node)
-
-            # Loop through children
-            for child in children:
-                # Child is on the closed list
-                if child in closed_set:
+            for new_node in self._graph_dict[current_item.graph_node]:  # Adjacent nodes
+                # Dont evaluate this node if the edge is not enabled
+                if not self._edge_at(current_item.graph_node.pos, new_node.pos).enabled(ignored_disablers=set(ignored_disablers)):
                     continue
 
-                # Create the f, g, and h values (use input functions to calculate g and h if provide, otherwise use distance between node positions)
-                child.g = current_node.g + g_func(current_node.graph_node, child.graph_node) if g_func else child.graph_node.pos.distance_from(current_node.graph_node.pos)
-                child.h = h_func(child.graph_node, end_node.graph_node) if h_func else child.graph_node.pos.distance_from(end_node.graph_node.pos)
-                child.f = child.g + child.h
+                new_item = _AStarMetrics(current_item, new_node)
 
-                # Add the child to the open list
-                if child in open_set:
-                    existing = open_set.remove(child)
-                    if existing is not None and child.g > existing.g:
-                        open_set.add(existing)
-                    else:
-                        open_set.add(child)
-                else:
-                    open_set.add(child)
+                if new_item in closed_set:
+                    continue
+
+                open_set.add(new_item)
+
+                # calculate new g, h, f from current pivot node to the new node
+                calc_g = current_item.g + g_func(current_item.graph_node,
+                                                 new_node) if g_func else new_node.pos.distance_from(
+                    current_item.graph_node.pos)
+                calc_h = h_func(new_node,
+                                end_iter.graph_node) if h_func else new_node.pos.distance_from(
+                    end_iter.graph_node.pos)
+                calc_f = calc_g + calc_h
+
+                new_item.parent = current_item
+                new_item.g = calc_g
+                new_item.h = calc_h
+                new_item.f = calc_f
 
 
+        if results is None:
+            ''' No Path Found '''
+            logging.error(f"Unable to find a path from [{start}] to [{end}] -- "
+                          f"\n{pformat(self._graph_dict)}"
+                          f"\n{pformat(steps)}")
+
+            return AStarResults(None, steps)
+        else:
+            ''' Log Path found '''
+            logging.debug(f"Path found from [{start}] to [{end}] -- "
+                          f"\n{pformat(self._graph_dict)}"
+                          f"\n{pformat(steps)}")
+            return results
 
     def path_length(self, path:List[Node]):
         length = 0
@@ -696,3 +765,43 @@ class Graph(object):
         for index, value in enumerate(ap):
             if value == True:
                 print(index)
+
+    def closest_node(self, pos: IVector):
+        closest_node = None
+        closest_distance = None
+        for node in self.nodes():
+            distance = node.pos.distance_from(pos)
+            if closest_node is None or distance < closest_distance:
+                closest_node = node
+                closest_distance = distance
+
+        return closest_node
+
+    def copy(self):
+        copy = Graph(graph_dict=self._graph_dict)
+        for edge in copy.edges():
+            og_edge = self.edge_between(edge.start, edge.end)
+            for disabler in og_edge.disablers():
+                edge.add_disabler(disabler)
+
+        return copy
+
+if __name__ == "__main__":
+    from coopstructs.vectors import Vector2
+    a = Node(name='A', pos=Vector2(0, 0))
+    b = Node(name='B', pos=Vector2(3, 3))
+    c = Node(name='C', pos=Vector2(2, 0))
+    d = Node(name='D', pos=Vector2(2, 1))
+    e = Node(name='E', pos=Vector2(3, 4))
+    f = Node(name='F', pos=Vector2(5, 5))
+
+    g = {a: [d],
+         b: [c],
+         c: [b, d, e],
+         d: [a, c],
+         e: [c],
+         f: []
+         }
+
+    graph = Graph(g)
+    print(graph.find_isolated_vertices())

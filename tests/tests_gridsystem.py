@@ -52,3 +52,12 @@ class Tests_GridSystem(unittest.TestCase):
         row = int((coord_pos.y) // (rect.height / grid.nRows))
 
         assert grid_pos == Vector2(column, row)
+
+
+    def test_astar(self):
+        grid = GridSystem(10, 10)
+
+        astar = grid.astar(grid.node_at(Vector2(0, 0)), grid.node_at(Vector2(5, 5)))
+
+
+        assert astar.path == [grid.node_at(Vector2(0, 0)), grid.node_at(Vector2(1, 1)), grid.node_at(Vector2(2, 2)), grid.node_at(Vector2(3, 3)), grid.node_at(Vector2(4, 4)), grid.node_at(Vector2(5, 5))]

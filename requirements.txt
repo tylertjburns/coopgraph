@@ -1,2 +1,4 @@
-coopstructs==0.9
-pygame==1.9.6
+coopstructs==0.12
+Hexy==1.4.3
+numpy==1.19.1
+six==1.15.0
