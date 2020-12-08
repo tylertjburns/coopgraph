@@ -414,7 +414,7 @@ class TestGraph(unittest.TestCase):
         graph = Graph(g)
 
         test = Vector2(0, 1)
-        closest = graph.closest_node(test)
+        closest = graph.closest_nodes(test)[0]
         assert closest == a; f"{closest}"
 
     def test_copy__base(self):

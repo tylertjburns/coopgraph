@@ -72,6 +72,8 @@ class AStarResults:
         self.steps = steps
 
 
+
+
 class Edge(object):
     def __init__(self, nodeA: Node, nodeB: Node, edge_direction=None):
         self.start = nodeA
@@ -204,7 +206,7 @@ class Graph(object):
         pos_node_map = {}
         for id, node in nodes.items():
             pos = node.pos
-            pos_node_map[pos] = id
+            pos_node_map.setdefault(pos, []).append(id)
 
         return pos_node_map
 
@@ -276,8 +278,8 @@ class Graph(object):
         elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
             for start in edges.keys():
                 for end in edges[start]:
-                    start_node = self.node_at(start)
-                    end_node = self.node_at(end)
+                    start_node = self.nodes_at_point(start)
+                    end_node = self.nodes_at_point(end)
                     if start_node and end_node:
                         edge = Edge(start_node, end_node)
                         self._add_edge(edge)
@@ -295,8 +297,8 @@ class Graph(object):
         elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
             for start in edges.keys():
                 for end in edges[start]:
-                    start_node = self.node_at(start)
-                    end_node = self.node_at(end)
+                    start_node = self.nodes_at_point(start)
+                    end_node = self.nodes_at_point(end)
                     if start_node and end_node:
                         edge = self._edge_at(start_node.pos, end_node.pos)
                         self._remove_edge(edge)
@@ -344,10 +346,8 @@ class Graph(object):
         return [self._edges[edge_id] for edge_id in node_edges]
 
 
-    def disable_edges_to_node(self, node, disabler):
+    def disable_edges_to_node(self, node: Node, disabler):
         logging.debug(f"disable {node} with disabler {disabler}")
-        if isinstance(node, IVector):
-            node = self.node_at(node)
 
         if isinstance(node, Node):
             node_edges = self._node_edge_map[node]
@@ -355,10 +355,8 @@ class Graph(object):
                 edge = self._edges[edge_id]
                 edge.add_disabler(disabler)
 
-    def enable_edges_to_node(self, node, disabler):
+    def enable_edges_to_node(self, node: Node, disabler):
         logging.debug(f"enable {node} on disabler {disabler}")
-        if isinstance(node, IVector):
-            node = self.node_at(node)
 
         if isinstance(node, Node):
             node_edges = self._node_edge_map[node]
@@ -385,16 +383,16 @@ class Graph(object):
             self._edges[edge.id] = edge
         self._build_maps()
 
-    def node_at(self, pos: IVector):
-        return self._nodes.get(self._pos_node_map.get(pos, None), None)
+    def nodes_at_point(self, pos: IVector) -> List[Node]:
+        node_ids = self._pos_node_map.get(pos, None)
+        return [self._nodes.get(node_id, None) for node_id in node_ids]
 
-    def nodes_at(self, points: List[IVector]):
-        nodes = [self.node_at(point) for point in points]
-        return [node for node in nodes if node]
+    def nodes_at(self, points: List[IVector]) -> Dict[IVector, List[Node]]:
+        return {point: self.nodes_at_point(point) for point in points}
 
     def _edge_at(self, start: IVector, end: IVector):
-        # start = self.node_at(start).pos
-        # end = self.node_at(end).pos
+        # start = self.nodes_at_point(start).pos
+        # end = self.nodes_at_point(end).pos
 
         if not (start and end):
             return None
@@ -766,16 +764,20 @@ class Graph(object):
             if value == True:
                 print(index)
 
-    def closest_node(self, pos: IVector):
-        closest_node = None
+    def closest_nodes(self, pos: IVector) -> List[Node]:
+        closest_nodes = None
         closest_distance = None
         for node in self.nodes():
             distance = node.pos.distance_from(pos)
-            if closest_node is None or distance < closest_distance:
-                closest_node = node
+            if closest_nodes is None or distance < closest_distance:
+                closest_nodes = [node]
                 closest_distance = distance
 
-        return closest_node
+            # Add node to return list if found multiple at distance
+            if distance == closest_distance:
+                closest_nodes.append(node)
+
+        return closest_nodes
 
     def copy(self):
         copy = Graph(graph_dict=self._graph_dict)
