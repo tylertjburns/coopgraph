@@ -1,5 +1,5 @@
 import hexy as hx
-from coopgraph.graphs import Graph, Node
+from coopgraph.graphs import Node
 from coopgraph.AGrid import AGrid
 import numpy as np
 from coopstructs.vectors import Vector2, IVector
@@ -7,18 +7,17 @@ from coopstructs.geometry import Rectangle
 from typing import Dict
 from coopgraph.dataStructs import GridPoint
 
+
 class HexGridSystem(AGrid):
     def __init__(self, axial_coordinates: np.array(Vector2), hex_radius: float):
         self.hex_radius = hex_radius
         self.hex_map = hx.HexMap()
-
 
         hexes = []
         coords = []
         for i, axial in enumerate(axial_coordinates):
             coords.append((axial.x, axial.y))
             hexes.append(hx.HexTile((axial.x, axial.y), hex_radius, hash(axial)))
-
 
         self.hex_map[np.array(coords)] = hexes
 
@@ -59,9 +58,10 @@ class HexGridSystem(AGrid):
                     print(f"{connection_pos} \n"
                           f"{pos_node_map}")
                     print(f"connection pos: {type(connection_pos)}")
-                    print(f"first pos_node_map pos: {type(pos_node_map.keys()[0])}")
+                    print(f"first pos_node_map pos: {type([x for x in pos_node_map.keys()][0])}")
                     raise
         return graph_dict
+
 
 if __name__ == "__main__":
     # spiral_coordinates = hx.get_spiral(np.array((0, 0, 0)), 1, 6)
@@ -76,5 +76,3 @@ if __name__ == "__main__":
 
     hexgrid = HexGridSystem(np.array(axial_coords), 5)
 
-
-    

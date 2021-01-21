@@ -82,7 +82,7 @@ class GridSystem(AGrid):
                     print(f"{connection_pos} \n"
                           f"{pos_node_map}")
                     print(f"connection pos: {type(connection_pos)}")
-                    print(f"first pos_node_map pos: {type(pos_node_map.keys()[0])}")
+                    print(f"first pos_node_map pos: {type([x for x in pos_node_map.keys()][0])}")
                     raise
         return graph_dict
 
