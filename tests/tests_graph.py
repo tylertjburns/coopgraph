@@ -178,11 +178,74 @@ class TestGraph(unittest.TestCase):
     def test__add_edge(self):
         pass
 
-    def test_node_at(self):
-        pass
+    def test_nodes_at__none(self):
+        a = Node(name='A', pos=Vector2(1, 1))
+        b = Node(name='B', pos=Vector2(3, 3))
+        c = Node(name='C', pos=Vector2(2, 0))
+        d = Node(name='D', pos=Vector2(2, 1))
+        e = Node(name='E', pos=Vector2(3, 4))
+        f = Node(name='F', pos=Vector2(5, 5))
 
-    def test_nodes_at(self):
-        pass
+        g = {a: [d],
+             b: [c],
+             c: [b, d, e],
+             d: [a, c],
+             e: [c],
+             f: []
+             }
+
+        graph = Graph(g)
+
+        nodes = graph.nodes_at_point(Vector2(0, 0))
+
+        assert nodes == []
+
+    def test_nodes_at__single(self):
+        a = Node(name='A', pos=Vector2(0, 0))
+        b = Node(name='B', pos=Vector2(3, 3))
+        c = Node(name='C', pos=Vector2(2, 0))
+        d = Node(name='D', pos=Vector2(2, 1))
+        e = Node(name='E', pos=Vector2(3, 4))
+        f = Node(name='F', pos=Vector2(5, 5))
+
+        g = {a: [d],
+             b: [c],
+             c: [b, d, e],
+             d: [a, c],
+             e: [c],
+             f: []
+             }
+
+        graph = Graph(g)
+
+        nodes = graph.nodes_at_point(Vector2(0, 0))
+
+        assert nodes == [a]
+
+    def test_nodes_at__multiple(self):
+        a = Node(name='A', pos=Vector2(0, 0))
+        b = Node(name='B', pos=Vector2(3, 3))
+        c = Node(name='C', pos=Vector2(2, 0))
+        d = Node(name='D', pos=Vector2(2, 1))
+        e = Node(name='E', pos=Vector2(3, 4))
+        f = Node(name='F', pos=Vector2(5, 5))
+        h = Node(name='H', pos=Vector2(0, 0))
+
+        g = {a: [d],
+             b: [c],
+             c: [b, d, e],
+             d: [a, c],
+             e: [c],
+             f: [],
+             h: []
+             }
+
+        graph = Graph(g)
+
+        nodes = graph.nodes_at_point(Vector2(0, 0))
+
+        assert nodes == [a, h]
+
 
     def test__edge_at(self):
         pass

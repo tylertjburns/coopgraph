@@ -384,7 +384,8 @@ class Graph(object):
         self._build_maps()
 
     def nodes_at_point(self, pos: IVector) -> List[Node]:
-        node_ids = self._pos_node_map.get(pos, None)
+        node_ids = self._pos_node_map.get(pos, [])
+
         return [self._nodes.get(node_id, None) for node_id in node_ids]
 
     def nodes_at(self, points: List[IVector]) -> Dict[IVector, List[Node]]:
@@ -565,7 +566,12 @@ class Graph(object):
             return False
         return True
 
-    def astar(self, start: Node, end: Node, g_func: Callable[[Node, Node], float] = None, h_func: Callable[[Node, Node], float] = None, ignored_disablers:List[str]=None) -> AStarResults:
+    def astar(self,
+              start: Node,
+              end: Node,
+              g_func: Callable[[Node, Node], float] = None,
+              h_func: Callable[[Node, Node], float] = None,
+              ignored_disablers:List[str]=None) -> AStarResults:
 
         if not ignored_disablers:
             ignored_disablers = []
@@ -685,15 +691,14 @@ class Graph(object):
 
         return True
 
-    '''A recursive function that find articulation points  
-        using DFS traversal 
-        u --> The vertex to be visited next 
-        visited[] --> keeps tract of visited vertices 
-        disc[] --> Stores discovery times of visited vertices 
-        parent[] --> Stores parent vertices in DFS tree 
-        ap[] --> Store articulation points'''
-
     def APUtil(self, u, visited, ap, parent, low, disc, iter):
+        '''A recursive function that find articulation points
+            using DFS traversal
+            u --> The vertex to be visited next
+            visited[] --> keeps tract of visited vertices
+            disc[] --> Stores discovery times of visited vertices
+            parent[] --> Stores parent vertices in DFS tree
+            ap[] --> Store articulation points'''
 
         # Count of children in current node
         children = 0

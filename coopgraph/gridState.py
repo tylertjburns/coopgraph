@@ -1,7 +1,42 @@
-class GridState():
-    def __init__(self, state=None, start_toggled:bool = True):
-        self.state = state if state else {}
-        self.toggled = start_toggled
+from typing import Dict
 
-    def toggle(self):
-        self.toggled = not self.toggled
+class GridState:
+    def __init__(self, grid, row: int, column: int, state: Dict=None):
+        self.state = state if state else {}
+        self.row = row
+        self.column = column
+        self.grid = grid
+
+    def copy(self):
+        return GridState(self.grid, self.row, self.column, state=self.state)
+
+    @property
+    def left(self):
+        if self.column > 0:
+            return self.grid[self.row][self.column - 1]
+        else:
+            return None
+
+    @property
+    def right(self):
+        if self.column < self.grid.nColumns - 1:
+            return self.grid[self.row][self.column + 1]
+        else:
+            return None
+
+    @property
+    def up(self):
+        if self.row > 0:
+            return self.grid[self.row - 1][self.column]
+        else:
+            return None
+
+    @property
+    def down(self):
+        if self.row < self.grid.nRows - 1:
+            return self.grid[self.row + 1][self.column]
+        else:
+            return None
+
+    def __repr__(self):
+        return str(self.state)

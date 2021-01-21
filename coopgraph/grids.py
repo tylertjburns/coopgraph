@@ -1,16 +1,30 @@
 from coopgraph.graphs import Node
-from typing import Dict, List
-from coopstructs.vectors import Vector2
+from typing import Dict, List, Callable
+from coopstructs.vectors import Vector2, IVector
 from coopstructs.geometry import Rectangle
 from coopgraph.dataStructs import GridPoint, UnitPathDefinition
-from coopgraph.AGrid import AGrid, IOnGridSelectPolicy
-
+from coopgraph.AGrid import AGrid
+from coopgraph.gridSelectPolicies import IOnGridSelectPolicy, TogglePolicy
+from coopgraph.gridState import GridState
+from coopgraph.toggles import BooleanToggleable
 
 class GridSystem(AGrid):
-    def __init__(self, nRows: int, nColumns: int, allow_diagonal_connections:bool=True, grid_select_policies: List[IOnGridSelectPolicy] = None):
+    def __init__(self,
+                 nRows: int,
+                 nColumns: int,
+                 connect_adjacents: bool=True,
+                 connect_diagonals: bool=True,
+                 grid_select_policies: List[IOnGridSelectPolicy] = None,
+                 default_state: Dict = None):
         self._diagonal_connections = {}
-        self._allow_diagonal_connections = allow_diagonal_connections
-        AGrid.__init__(self, nRows=nRows, nColumns=nColumns, grid_select_policies=grid_select_policies)
+        self._connect_adjacents = connect_adjacents
+        self._connect_diagonals = connect_diagonals
+        AGrid.__init__(self,
+                       nRows=nRows,
+                       nColumns=nColumns,
+                       graph_dict_provider=self.graph_dict_provider,
+                       grid_select_policies=grid_select_policies,
+                       default_state=default_state)
 
 
     def grid_unit_width(self, area_rect:Rectangle):
@@ -44,12 +58,18 @@ class GridSystem(AGrid):
         grid_coord = Vector2(column, row)
         return grid_coord
 
-    def build_graph_dict(self, pos_node_map: Dict[Vector2, Node], allow_diagonals: bool = True):
+    def graph_dict_provider(self, pos_node_map: Dict[IVector, Node]) -> Dict[Node, List[Node]]:
+        return self.build_graph_dict(pos_node_map, connect_adjacents=self._connect_adjacents, connect_diagonals=self._connect_diagonals)
+
+    def build_graph_dict(self,
+                         pos_node_map: Dict[IVector, Node],
+                         connect_adjacents: bool=True,
+                         connect_diagonals: bool = True)-> Dict[Node, List[Node]]:
         graph_dict = {}
 
         for pos in pos_node_map.keys():
             graph_dict[pos_node_map[pos]] = []
-            connections = [
+            adjacents = [
                 Vector2(pos.x - 1, pos.y) if pos_node_map.get(Vector2(pos.x - 1, pos.y), None) else None,  # left
                 Vector2(pos.x + 1, pos.y) if pos_node_map.get(Vector2(pos.x + 1, pos.y), None) else None,  # right
                 Vector2(pos.x, pos.y - 1) if pos_node_map.get(Vector2(pos.x, pos.y - 1), None) else None,  # up
@@ -67,13 +87,22 @@ class GridSystem(AGrid):
                 # DownRight
             ]
 
-            if allow_diagonals:
+            connections = []
+
+            # add adjacents to connections list
+            if connect_adjacents:
+                connections += adjacents
+
+            # add diagonals to connections list
+            if connect_diagonals:
                 connections += diagonals
 
+            # add diagonal connections to a saved dict for quick id later
             for connection in diagonals:
                 if connection:
                     self._diagonal_connections.setdefault(pos, []).append(connection)
 
+            # add connections to the graph_dict for each node
             for connection_pos in connections:
                 try:
                     if connection_pos:
@@ -104,41 +133,49 @@ class GridSystem(AGrid):
         toc = time.perf_counter()
         print(f"Toggled the diagonal connections in {toc - tic:0.4f} seconds")
 
+    def left_of(self, row: int, column: int, positions: int = 1):
+        if column > positions:
+            return self.grid[row][column - positions]
+        else:
+            return None
 
-class UnitPathGridSystem(GridSystem):
-    def __init__(self, nRows, nColumns):
-        super().__init__(nRows, nColumns)
-        self.grid = [[UnitPathDefinition() for x in range(self.nColumns)] for y in range(self.nRows)]
+    def right_of(self, row: int, column: int, positions: int = 1):
+        if column < self.nColumns - positions:
+            return self.grid[row][column + positions]
+        else:
+            return None
 
-    def toggle_at_rc(self, row, column):
-        if row < self.nRows and column < self.nColumns:
-            new_toggle = 1 - self.grid[row][column].toggled
-            self.grid[row][column].toggled = new_toggle
-            self.handle_neigbors(column, row, new_toggle)
+    def up_of(self, row: int, column: int, positions: int = 1):
+        if row > positions:
+            return self.grid[row - positions][column]
+        else:
+            return None
 
-    def toggle_at_xy(self, x, y):
-        if y < self.nRows and x < self.nColumns:
-            new_toggle = 1 - self.grid[y][x].toggled
-            self.grid[y][x].toggled = new_toggle
-            self.handle_neigbors(x, y, new_toggle)
+    def down_of(self, row: int, column: int, positions: int = 1):
+        if row < self.nRows - positions:
+            return self.grid[row + positions][column]
+        else:
+            return None
 
-    def handle_neigbors(self, x, y, new_toggle):
-        # Handle Left
-        if x > 0 and self.grid[y][x - 1].toggled:
-            self.grid[y][x - 1].right = new_toggle
-            self.grid[y][x].left = new_toggle
+# class ToggleableGridSystem(GridSystem):
+#     def __init__(self,
+#                  nRows,
+#                  nColumns,
+#                  toggles: Dict[str, BooleanToggleable],
+#                  neighbor_handler: Callable[[GridState, GridState], GridState] = None):
+#         GridSystem.__init__(self, nRows, nColumns, default_state=toggles, grid_select_policies=[])
+#         self.neighbor_handler = neighbor_handler
+#
+#     def toggle_at_rc(self, row, column):
+#         if row < self.nRows and column < self.nColumns:
+#             new_state = self.grid[row][column].toggle()
+#             self.handle_others(new_state)
+#
+#     def handle_others(self, new_state):
+#         if self.neighbor_handler is None:
+#             return
+#
+#         for other_grid in self.grid_enumerator():
+#             if other_grid.row != new_state.row and other_grid.column != new_state.column:
+#                 self.neighbor_handler(new_state, other_grid)
 
-        # Handle Up
-        if y > 0 and self.grid[y - 1][x].toggled:
-            self.grid[y - 1][x].down = new_toggle
-            self.grid[y][x].up = new_toggle
-
-        # Handle Right
-        if x < len(self.grid[y]) - 1 and self.grid[y][x + 1].toggled:
-            self.grid[y][x + 1].left = new_toggle
-            self.grid[y][x].right = new_toggle
-
-        # Handle Down
-        if y < len(self.grid) - 1 and self.grid[y + 1][x].toggled:
-            self.grid[y + 1][x].up = new_toggle
-            self.grid[y][x].down = new_toggle
