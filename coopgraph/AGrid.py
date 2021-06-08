@@ -9,8 +9,8 @@ from coopgraph.gridSelectPolicies import IOnGridSelectPolicy, DoNothingPolicy
 from coopgraph.gridState import GridState
 from pprint import pformat
 
+#TODO: Remove graph inheritance. Grids should be able to exist without the underlying graph which is slow to construct
 class AGrid(ABC, Graph):
-
     def __init__(self,
                  nRows: int,
                  nColumns: int,
@@ -26,7 +26,7 @@ class AGrid(ABC, Graph):
         Graph.__init__(self, graph_dict=graph_dict)
         self.nRows = nRows
         self.nColumns = nColumns
-        self.grid = np.array([[GridState(self, row, column, values[row][column]) if values else GridState(self, row, column, state=default_state)
+        self.grid = np.array([[GridState(self, row, column, values[row][column]) if values is not None else GridState(self, row, column, state=default_state)
                                for column in range(self.nColumns)] for row in range(self.nRows)])
 
         if grid_select_policies is None:

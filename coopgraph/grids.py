@@ -7,6 +7,7 @@ from coopgraph.AGrid import AGrid
 from coopgraph.gridSelectPolicies import IOnGridSelectPolicy, TogglePolicy
 from coopgraph.gridState import GridState
 from coopgraph.toggles import BooleanToggleable
+import numpy as np
 
 class GridSystem(AGrid):
     def __init__(self,
@@ -15,6 +16,7 @@ class GridSystem(AGrid):
                  connect_adjacents: bool=True,
                  connect_diagonals: bool=True,
                  grid_select_policies: List[IOnGridSelectPolicy] = None,
+                 values: np.array = None,
                  default_state: Dict = None):
         self._diagonal_connections = {}
         self._connect_adjacents = connect_adjacents
@@ -24,7 +26,8 @@ class GridSystem(AGrid):
                        nColumns=nColumns,
                        graph_dict_provider=self.graph_dict_provider,
                        grid_select_policies=grid_select_policies,
-                       default_state=default_state)
+                       default_state=default_state,
+                       values=values)
 
 
     def grid_unit_width(self, area_rect:Rectangle):

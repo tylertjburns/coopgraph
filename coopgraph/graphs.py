@@ -136,6 +136,51 @@ class Edge(object):
 
 class Graph(object):
 
+    #TODO: Add a "from file" constructor cls method
+
+    # def create_points_from_file(filePath: str, scale: (int, int), hasHeaders: bool = True):
+    #     import csv
+    #
+    #     points = []
+    #     with open(filePath) as csv_file:
+    #         csv_reader = csv.reader(csv_file, delimiter=',')
+    #         line_count = 0
+    #
+    #         for row in csv_reader:
+    #             if line_count == 0 and hasHeaders:
+    #                 print(f'Column names are {", ".join(row)}')
+    #                 line_count += 1
+    #             else:
+    #                 # end_node= Node(str(row[0]) + "_start", int(float(row[1])), int(float(row[3]))
+    #
+    #                 points.append((int(float(row[1]) * scale[0]), int(float(row[3]) * scale[1])))
+    #                 line_count += 1
+    #
+    #     return points
+    #
+    # def create_edges_from_file(filePath: str, scale: (int, int), hasHeaders: bool = True):
+    #     import csv
+    #
+    #     edges = []
+    #     with open(filePath) as csv_file:
+    #         csv_reader = csv.reader(csv_file, delimiter=',')
+    #         line_count = 0
+    #
+    #         for row in csv_reader:
+    #             if line_count == 0 and hasHeaders:
+    #                 print(f'Column names are {", ".join(row)}')
+    #                 line_count += 1
+    #             else:
+    #                 start_node = Node(str(row[0]) + "_start", int(float(row[1]) * scale[0]),
+    #                                   int(float(row[2]) * scale[1]))
+    #                 end_node = Node(str(row[0]) + "_end", int(float(row[3]) * scale[0]), int(float(row[4]) * scale[1]))
+    #                 edges.append(Edge(row[0], start_node, end_node, EdgeConnection.TwoWay))
+    #                 line_count += 1
+    #
+    #     return edges
+
+
+
     def __init__(self, graph_dict: Dict[Node, List[Node]]=None):
         """ initializes a graph object
             If no dictionary or None is given, an empty dictionary will be used
@@ -232,10 +277,18 @@ class Graph(object):
         # return copy.deepcopy([node for id, node in self._nodes.items()])
         return ([node for id, node in self._nodes.items()])
 
+    @property
+    def nodes(self):
+        return self.nodes()
+
     def edges(self):
         """ returns the edges of a graph """
         # return copy.deepcopy([edge for id, edge in self._edges.items()])
         return ([edge for id, edge in self._edges.items()])
+
+    @property
+    def edges(self):
+        return self.edges()
 
     def add_node_with_connnections(self, node: Node, connections: Dict[Node, EdgeDirection]):
         self.add_node(node)
@@ -783,6 +836,31 @@ class Graph(object):
                 closest_nodes.append(node)
 
         return closest_nodes
+
+
+    #TODO: enable a "walk" method. should accept a number of steps, an optional start point, and and optional end point
+
+    # def walk(self, name: str, points: [(int, int)]) -> ({str, Node}, {str, Edge}):
+    #     walk_nodes: {str, Node} = {}
+    #     walk_edges: {str, Edge} = {}
+    #
+    #     old_point = None
+    #     for point in points:
+    #         new_point = Node(self.nodeIndex, point[0], point[1])
+    #         walk_nodes[str(self.nodeIndex)] = new_point
+    #         self.nodeIndex += 1
+    #         if old_point is not None:
+    #             walk_edges[str(self.edgeIndex)] = Edge(self.edgeIndex, old_point, new_point, EdgeConnection.OneWay)
+    #             self.edgeIndex += 1
+    #
+    #         old_point = new_point
+    #
+    #     self.nodes.update(walk_nodes)
+    #     self.edges.update(walk_edges)
+    #     ret = (walk_nodes, walk_edges)
+    #     self.walks[name] = ret
+    #     return ret
+
 
     def copy(self):
         copy = Graph(graph_dict=self._graph_dict)
