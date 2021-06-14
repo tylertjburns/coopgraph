@@ -117,9 +117,11 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
+    dimension = 100
+
     logging.info(f"Creating Grid")
     tic = time.perf_counter()
-    grid = RectGrid(1000, 1000)
+    grid = RectGrid(dimension, dimension)
     toc = time.perf_counter()
     logging.info(f"Done {toc - tic}")
 
@@ -130,7 +132,7 @@ if __name__ == "__main__":
     logging.info(f"Done {toc - tic}")
 
     start = Vector2(0, 0)
-    end = Vector2(1000, 1000)
+    end = Vector2(dimension - 1, dimension - 1)
 
     logging.info(f"Starting Astar")
     tic = time.perf_counter()
