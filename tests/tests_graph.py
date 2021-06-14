@@ -25,8 +25,8 @@ class TestGraph(unittest.TestCase):
     def test_init_graph(self):
         graph = self.init_a_test_graph()
 
-        assert len(graph.nodes()), 6
-        assert len(graph.edges()), 9
+        assert len(graph.nodes), 6
+        assert len(graph.edges), 9
 
     def test__generate_node_edge_map(self):
         pass
@@ -61,8 +61,8 @@ class TestGraph(unittest.TestCase):
 
         graph = Graph(g)
 
-        assert len(graph.nodes()) == 6
-        assert graph.nodes() == [a, b, c, d, e, f]
+        assert len(graph.nodes) == 6
+        assert graph.nodes == [a, b, c, d, e, f]
 
 
     def test_edges(self):
@@ -83,8 +83,8 @@ class TestGraph(unittest.TestCase):
 
         graph = Graph(g)
 
-        assert len(graph.edges()) == 9
-        assert graph.edges() == [graph.edge_between(a, d), graph.edge_between(b, c), graph.edge_between(c, b), graph.edge_between(c, d), graph.edge_between(c, e), graph.edge_between(d, a), graph.edge_between(d, c), graph.edge_between(e, c), graph.edge_between(e, f)]
+        assert len(graph.edges) == 9
+        assert graph.edges == [graph.edge_between(a, d), graph.edge_between(b, c), graph.edge_between(c, b), graph.edge_between(c, d), graph.edge_between(c, e), graph.edge_between(d, a), graph.edge_between(d, c), graph.edge_between(e, c), graph.edge_between(e, f)]
 
     def test_add_node(self):
         a = Node(name='A', pos=Vector2(0, 0))
@@ -104,14 +104,14 @@ class TestGraph(unittest.TestCase):
 
         graph = Graph(g)
 
-        assert len(graph.nodes()) == 6
-        assert graph.nodes() == [a, b, c, d, e, f]
+        assert len(graph.nodes) == 6
+        assert graph.nodes == [a, b, c, d, e, f]
 
         h = Node(name='H', pos=Vector2(6, 5))
         graph.add_node(h)
 
-        assert len(graph.nodes()) == 7
-        assert graph.nodes() == [a, b, c, d, e, f, h]
+        assert len(graph.nodes) == 7
+        assert graph.nodes == [a, b, c, d, e, f, h]
 
     def test_add_edges(self):
         pass
@@ -449,7 +449,7 @@ class TestGraph(unittest.TestCase):
         graph.add_node_with_connnections(h, {a: EdgeDirection.FROM, b: EdgeDirection.TO, c: EdgeDirection.TWOWAY})
 
 
-        assert h in graph.nodes()
+        assert h in graph.nodes
 
         assert graph.edge_between(a, h) is not None
         assert graph.edge_between(h, a) is None
@@ -500,9 +500,9 @@ class TestGraph(unittest.TestCase):
 
         copy = graph.copy()
 
-        assert len(copy.nodes()) == len(graph.nodes())
-        assert len(copy.edges()) == len(graph.edges())
-        assert (edge.disablers() == graph.edge_between(edge.start, edge.end).disablers() for edge in copy.edges())
+        assert len(copy.nodes) == len(graph.nodes)
+        assert len(copy.edges) == len(graph.edges)
+        assert (edge.disablers() == graph.edge_between(edge.start, edge.end).disablers() for edge in copy.edges)
 
 
 

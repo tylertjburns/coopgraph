@@ -191,8 +191,8 @@ class Graph(object):
 
 
 
-        self._nodes = {}
-        self._edges = {}
+        self._nodes_dict = {}
+        self._edges_dict = {}
 
         ''' self._edges[start: Vector2][end: Vector2] = edge: Edge '''
         self._pos_edge_map = None
@@ -205,23 +205,23 @@ class Graph(object):
 
 
         for node in graph_dict.keys():
-            self._nodes[node.name] = node
+            self._nodes_dict[node.name] = node
             for toNode in graph_dict[node]:
                 edge = Edge(node, toNode, EdgeDirection.ONEWAY)
-                self._edges[edge.id] = edge
+                self._edges_dict[edge.id] = edge
 
         self._build_maps()
 
 
     def _build_maps(self):
-        # self.__graph_dict is a first class citizen. Therefore update all the others off of an updated graph_dict
-        self._graph_dict = self.__generate_graph_dict(self._edges)
+        # self._graph_dict is a first class citizen. Therefore update all the others off of an updated graph_dict
+        self._graph_dict = self.__generate_graph_dict(self._edges_dict)
 
         # update remaining maps assuming graph_dict is accurate
-        self._pos_edge_map = self.__generate_pos_edge_map(self._edges)
-        self._node_edge_map = self.__generate_node_edge_map(self._edges)
-        self._pos_node_map = self.__generate_position_node_map(self._nodes)
-        self._node_by_name_map = self.__generate_node_by_name_map(self._nodes)
+        self._pos_edge_map = self.__generate_pos_edge_map(self._edges_dict)
+        self._node_edge_map = self.__generate_node_edge_map(self._edges_dict)
+        self._pos_node_map = self.__generate_position_node_map(self._nodes_dict)
+        self._node_by_name_map = self.__generate_node_by_name_map(self._nodes_dict)
 
     def __generate_node_edge_map(self, edges: Dict[str, Edge]):
         node_edge_map = {}
@@ -261,7 +261,7 @@ class Graph(object):
         for id, edge in edges.items():
             graph_dict.setdefault(edge.start, []).append(edge.end)
 
-        for id, node in self._nodes.items():
+        for id, node in self._nodes_dict.items():
             if node not in graph_dict.keys():
                 graph_dict[node] = []
         return graph_dict
@@ -272,23 +272,23 @@ class Graph(object):
             ret[node.name] = node_id
         return ret
 
-    def nodes(self):
+    def _nodes(self) -> List[Node]:
         """ returns the vertices of a graph """
         # return copy.deepcopy([node for id, node in self._nodes.items()])
-        return ([node for id, node in self._nodes.items()])
+        return ([node for id, node in self._nodes_dict.items()])
 
     @property
-    def nodes(self):
-        return self.nodes()
+    def nodes(self) -> List[Node]:
+        return self._nodes()
 
-    def edges(self):
+    def _edges(self) -> List[Edge]:
         """ returns the edges of a graph """
         # return copy.deepcopy([edge for id, edge in self._edges.items()])
-        return ([edge for id, edge in self._edges.items()])
+        return ([edge for id, edge in self._edges_dict.items()])
 
     @property
-    def edges(self):
-        return self.edges()
+    def edges(self) -> List[Edge]:
+        return self._edges()
 
     def add_node_with_connnections(self, node: Node, connections: Dict[Node, EdgeDirection]):
         self.add_node(node)
@@ -317,8 +317,8 @@ class Graph(object):
             list as a value is added to the dictionary.
             Otherwise nothing has to be done.
         """
-        if node.name not in self._nodes.keys():
-            self._nodes[node.name] = node
+        if node.name not in self._nodes_dict.keys():
+            self._nodes_dict[node.name] = node
         self._build_maps()
 
     def add_edges(self, edges):
@@ -396,7 +396,7 @@ class Graph(object):
         if not isinstance(node, Node):
             raise Exception(f"input must be of type {Node}, but {type(node)} was provided")
         node_edges = self._node_edge_map[node]
-        return [self._edges[edge_id] for edge_id in node_edges]
+        return [self._edges_dict[edge_id] for edge_id in node_edges]
 
 
     def disable_edges_to_node(self, node: Node, disabler):
@@ -405,7 +405,7 @@ class Graph(object):
         if isinstance(node, Node):
             node_edges = self._node_edge_map[node]
             for edge_id in node_edges:
-                edge = self._edges[edge_id]
+                edge = self._edges_dict[edge_id]
                 edge.add_disabler(disabler)
 
     def enable_edges_to_node(self, node: Node, disabler):
@@ -414,7 +414,7 @@ class Graph(object):
         if isinstance(node, Node):
             node_edges = self._node_edge_map[node]
             for edge_id in node_edges:
-                edge = self._edges[edge_id]
+                edge = self._edges_dict[edge_id]
                 edge.remove_disabler(disabler)
 
     def adjacent_nodes(self, node: Node, only_enabled: bool = False, ignored_disablers: set = None) -> List[Node]:
@@ -427,19 +427,19 @@ class Graph(object):
     def _remove_edge(self, edge: Edge):
         edge = self._edge_at(edge.start.pos, edge.end.pos)
         if edge.id in self._pos_edge_map.keys():
-            del self._edges[edge.id]
+            del self._edges_dict[edge.id]
         self._build_maps()
 
     def _add_edge(self, edge: Edge):
         existing_edge = self._edge_at(edge.start.pos, edge.end.pos)
         if existing_edge is None:
-            self._edges[edge.id] = edge
+            self._edges_dict[edge.id] = edge
         self._build_maps()
 
     def nodes_at_point(self, pos: IVector) -> List[Node]:
         node_ids = self._pos_node_map.get(pos, [])
 
-        return [self._nodes.get(node_id, None) for node_id in node_ids]
+        return [self._nodes_dict.get(node_id, None) for node_id in node_ids]
 
     def nodes_at(self, points: List[IVector]) -> Dict[IVector, List[Node]]:
         return {point: self.nodes_at_point(point) for point in points}
@@ -453,7 +453,7 @@ class Graph(object):
 
         edge_id = self._pos_edge_map.get(start, {}).get(end, None)
         if edge_id:
-            return self._edges.get(edge_id, None)
+            return self._edges_dict.get(edge_id, None)
 
         return None
 
@@ -464,7 +464,7 @@ class Graph(object):
 
     def __str__(self):
         res = "vertices: "
-        for id, node in self._nodes.items():
+        for id, node in self._nodes_dict.items():
             res += f"\n\t{str(node)}"
         res += "\nedges: "
         for edge in self.edges():
@@ -484,7 +484,7 @@ class Graph(object):
             in graph """
         if path is None:
             path = []
-        nodes = self._nodes
+        nodes = self._nodes_dict
         path = path + [start_vertex]
         if start_vertex == end_vertex:
             return path
@@ -504,7 +504,7 @@ class Graph(object):
             end_vertex in graph """
         if path is None:
             path = []
-        nodes = self._nodes
+        nodes = self._nodes_dict
         path = path + [start_vertex]
         if start_vertex == end_vertex:
             return [path]
@@ -512,7 +512,7 @@ class Graph(object):
             return []
         paths = []
         for edge_id in self._node_edge_map[start_vertex]:
-            edge = self._edges[edge_id]
+            edge = self._edges_dict[edge_id]
             node = edge.end
             if node not in path:
                 extended_paths = self.find_all_paths(node,
@@ -529,7 +529,7 @@ class Graph(object):
             of adjacent vertices. """
 
         edges = self._node_edge_map.get(node, [])
-        edges = [self._edges[x] for x in edges]
+        edges = [self._edges_dict[x] for x in edges]
         degree = len(edges) + edges.count([x for x in edges if x.end == node])
         return degree
 
@@ -537,7 +537,7 @@ class Graph(object):
     def degree_sequence(self):
         """ calculates the degree sequence """
         seq = []
-        for id, node in self._nodes.items():
+        for id, node in self._nodes_dict.items():
             seq.append(self.vertex_degree(node))
         seq.sort(reverse=True)
         return tuple(seq)
@@ -556,7 +556,7 @@ class Graph(object):
     def delta(self):
         """ the minimum degree of the vertices """
         min = 100000000
-        for id, node in self._nodes.items():
+        for id, node in self._nodes_dict.items():
             vertex_degree = self.vertex_degree(node)
             if vertex_degree < min:
                 min = vertex_degree
@@ -566,7 +566,7 @@ class Graph(object):
     def Delta(self):
         """ the maximum degree of the vertices """
         max = 0
-        for id, node in self._nodes.items():
+        for id, node in self._nodes_dict.items():
             vertex_degree = self.vertex_degree(node)
             if vertex_degree > max:
                 max = vertex_degree
@@ -575,7 +575,7 @@ class Graph(object):
 
     def density(self):
         """ method to calculate the density of a graph """
-        g = self._nodes
+        g = self._nodes_dict
         V = len(g.keys())
         E = len(self.edges())
         return 2.0 * E / (V * (V - 1))
@@ -733,13 +733,13 @@ class Graph(object):
     def node_by_name(self, node_name: str):
         # nodes = self.nodes()
         # return next(node for node in nodes if node.name == node_name)
-        return self._nodes[self._node_by_name_map[node_name]]
+        return self._nodes_dict[self._node_by_name_map[node_name]]
 
 
 
     def verify_edge_configuration(self, edges_to_compare: List[Edge]):
         for edge in edges_to_compare:
-            if not self._edges[self._pos_edge_map[edge.start.pos][edge.end.pos]].config_match(edge):
+            if not self._edges_dict[self._pos_edge_map[edge.start.pos][edge.end.pos]].config_match(edge):
                 return False
 
         return True
@@ -798,7 +798,7 @@ class Graph(object):
         # Mark all the vertices as not visited
         # and Initialize parent and visited,
         # and ap(articulation point) arrays
-        visited = {node: False for id, node in self._nodes.items()}
+        visited = {node: False for id, node in self._nodes_dict.items()}
         disc = {node: float("Inf") for node in self._graph_dict.keys()}
         low = {node: float("Inf") for node in self._graph_dict.keys()}
         parent = {node: -1 for node in self._graph_dict.keys()}
@@ -825,7 +825,7 @@ class Graph(object):
     def closest_nodes(self, pos: IVector) -> List[Node]:
         closest_nodes = None
         closest_distance = None
-        for node in self.nodes():
+        for node in self.nodes:
             distance = node.pos.distance_from(pos)
             if closest_nodes is None or distance < closest_distance:
                 closest_nodes = [node]
@@ -864,7 +864,7 @@ class Graph(object):
 
     def copy(self):
         copy = Graph(graph_dict=self._graph_dict)
-        for edge in copy.edges():
+        for edge in copy.edges:
             og_edge = self.edge_between(edge.start, edge.end)
             for disabler in og_edge.disablers():
                 edge.add_disabler(disabler)

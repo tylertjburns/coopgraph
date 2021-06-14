@@ -1,4 +1,4 @@
-from coopgraph.grids import GridSystem
+from coopgraph.grids import RectGrid
 from coopgraph.gridSelectPolicies import IncrementPolicy, TogglePolicy
 from coopgraph.toggles import BooleanToggleable
 
@@ -12,7 +12,7 @@ toggle_right = TogglePolicy(key='right', toggle=BooleanToggleable(default=False)
 toggle_up = TogglePolicy(key='up', toggle=BooleanToggleable(default=False))
 toggle_down = TogglePolicy(key='down', toggle=BooleanToggleable(default=False))
 
-grid = GridSystem(4, 4, grid_select_policies=[
+grid = RectGrid(4, 4, grid_select_policies=[
                                                 increment_counter_policy,
                                                 toggle_bool_policy,
                                                 toggle_left,
