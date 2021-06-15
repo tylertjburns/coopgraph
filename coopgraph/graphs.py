@@ -467,7 +467,7 @@ class Graph(object):
         for id, node in self._nodes_dict.items():
             res += f"\n\t{str(node)}"
         res += "\nedges: "
-        for edge in self.edges():
+        for edge in self.edges:
             res += f"\n\t{str(edge)}"
         return res
 
@@ -780,12 +780,12 @@ class Graph(object):
                 # u is an articulation point in following cases
                 # (1) u is root of DFS tree and has two or more chilren.
                 if parent[u] == -1 and children > 1:
-                    ap[u] = True
+                    ap[u] = children
 
                 # (2) If u is not root and low value of one of its child is more
                 # than discovery value of u.
                 if parent[u] != -1 and low[v] >= disc[u]:
-                    ap[u] = True
+                    ap[u] = children
 
                     # Update low value of u for parent function calls
             elif v != parent[u]:
@@ -793,7 +793,8 @@ class Graph(object):
 
                 # The function to do DFS traversal. It uses recursive APUtil()
 
-    def AP(self):
+    def AP(self) -> Dict[Node, int]:
+        # https://www.geeksforgeeks.org/articulation-points-or-cut-vertices-in-a-graph/
 
         # Mark all the vertices as not visited
         # and Initialize parent and visited,
@@ -802,13 +803,14 @@ class Graph(object):
         disc = {node: float("Inf") for node in self._graph_dict.keys()}
         low = {node: float("Inf") for node in self._graph_dict.keys()}
         parent = {node: -1 for node in self._graph_dict.keys()}
-        ap = {node: False for node in self._graph_dict.keys()}  # To store articulation points
+        ap = {node: 0 for node in self._graph_dict.keys()}  # To store articulation points
 
-        print(visited)
-        print(disc)
-        print(low)
-        print(parent)
-        print(ap)
+        logging.debug(f"Articulation points evaluation:"
+                      f"\n\tVisited: {visited}"
+                      f"\n\tdisc: {disc}"
+                      f"\n\tlow: {low}"
+                      f"\n\tparent: {parent}"
+                      f"\n\tap: {ap}")
 
         # Call the recursive helper function
         # to find articulation points
@@ -817,10 +819,11 @@ class Graph(object):
             if visited[i] == False:
                 self.APUtil(i, visited, ap, parent, low, disc, 0)
 
-        print(f"TESTTEST ap{ap}")
-        for index, value in enumerate(ap):
-            if value == True:
-                print(index)
+        ret = {k:v for k, v in ap.items() if v > 1}
+        logging.debug(f"APs: [{[k for k, v in ret.items()]}]")
+
+        return ret
+
 
     def closest_nodes(self, pos: IVector) -> List[Node]:
         closest_nodes = None
@@ -873,6 +876,10 @@ class Graph(object):
 
 if __name__ == "__main__":
     from coopstructs.vectors import Vector2
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
+
     a = Node(name='A', pos=Vector2(0, 0))
     b = Node(name='B', pos=Vector2(3, 3))
     c = Node(name='C', pos=Vector2(2, 0))
@@ -889,4 +896,9 @@ if __name__ == "__main__":
          }
 
     graph = Graph(g)
-    print(graph.find_isolated_vertices())
+
+    #TEST 1
+    # print(graph.find_isolated_vertices())
+
+    #TEST 2
+    print(graph.AP())
