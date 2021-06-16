@@ -281,14 +281,18 @@ class Graph(object):
     def nodes(self) -> List[Node]:
         return self._nodes()
 
-    def _edges(self) -> List[Edge]:
+    def _edges(self, ids: List[str] = None) -> List[Edge]:
         """ returns the edges of a graph """
         # return copy.deepcopy([edge for id, edge in self._edges.items()])
-        return ([edge for id, edge in self._edges_dict.items()])
+        return ([edge for id, edge in self._edges_dict.items() if ids is None or id in ids])
 
     @property
     def edges(self) -> List[Edge]:
         return self._edges()
+
+    def edges_by_id(self, edge_ids: List[str]):
+        return self._edges(edge_ids)
+
 
     def add_node_with_connnections(self, node: Node, connections: Dict[Node, EdgeDirection]):
         self.add_node(node)
@@ -331,8 +335,8 @@ class Graph(object):
         elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
             for start in edges.keys():
                 for end in edges[start]:
-                    start_node = self.nodes_at_point(start)
-                    end_node = self.nodes_at_point(end)
+                    start_node = self.nodes_at_point(start)[0]
+                    end_node = self.nodes_at_point(end)[0]
                     if start_node and end_node:
                         edge = Edge(start_node, end_node, naming_provider=self.naming_provider)
                         self._add_edge(edge)
@@ -350,8 +354,8 @@ class Graph(object):
         elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
             for start in edges.keys():
                 for end in edges[start]:
-                    start_node = self.nodes_at_point(start)
-                    end_node = self.nodes_at_point(end)
+                    start_node = self.nodes_at_point(start)[0]
+                    end_node = self.nodes_at_point(end)[0]
                     if start_node and end_node:
                         edge = self._edge_at(start_node.pos, end_node.pos)
                         self._remove_edge(edge)

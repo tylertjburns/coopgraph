@@ -504,8 +504,31 @@ class TestGraph(unittest.TestCase):
         assert len(copy.edges) == len(graph.edges)
         assert (edge.disablers() == graph.edge_between(edge.start, edge.end).disablers() for edge in copy.edges)
 
+    def test__edge_by_id(self):
+        a = Node(name='A', pos=Vector2(0, 0))
+        b = Node(name='B', pos=Vector2(3, 3))
+        c = Node(name='C', pos=Vector2(2, 0))
+        d = Node(name='D', pos=Vector2(2, 1))
+        e = Node(name='E', pos=Vector2(3, 4))
+        f = Node(name='F', pos=Vector2(5, 5))
 
+        g = {a: [d],
+             b: [c],
+             c: [b, d, e],
+             d: [a, b, c],
+             e: [c],
+             f: []
+             }
 
+        graph = Graph(g)
+
+        edge = graph.edge_between(a, d)
+
+        self.assertIsNotNone(edge, "Edge was returned none when expected value")
+
+        edge_ret = graph.edges_by_id([edge.id])[0]
+
+        self.assertEqual(edge, edge_ret, f"returned edge {edge_ret} [{edge_ret.id}] does not match {edge} [{edge.id}]")
 
 
 if __name__ == "__main__":
