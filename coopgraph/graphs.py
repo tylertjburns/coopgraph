@@ -75,7 +75,7 @@ class AStarResults:
 
 
 class Edge(object):
-    def __init__(self, nodeA: Node, nodeB: Node, edge_direction=None):
+    def __init__(self, nodeA: Node, nodeB: Node, edge_direction=None, naming_provider: Callable[[], str] = None):
         self.start = nodeA
         self.end = nodeB
         if edge_direction is None:
@@ -83,7 +83,7 @@ class Edge(object):
         self.direction = edge_direction
         self._disablers = set()
         self.length = nodeA.pos.distance_from(nodeB.pos)
-        self.id = str(uuid.uuid4())
+        self.id = naming_provider() if naming_provider else str(uuid.uuid4())
 
     def __str__(self):
         char_dict = {
@@ -181,7 +181,7 @@ class Graph(object):
 
 
 
-    def __init__(self, graph_dict: Dict[Node, List[Node]]=None):
+    def __init__(self, graph_dict: Dict[Node, List[Node]]=None, naming_provider: Callable[[], str] = None):
         """ initializes a graph object
             If no dictionary or None is given, an empty dictionary will be used
         """
@@ -189,7 +189,7 @@ class Graph(object):
             graph_dict = {}
         self._graph_dict = graph_dict
 
-
+        self.naming_provider = naming_provider
 
         self._nodes_dict = {}
         self._edges_dict = {}
@@ -207,7 +207,7 @@ class Graph(object):
         for node in graph_dict.keys():
             self._nodes_dict[node.name] = node
             for toNode in graph_dict[node]:
-                edge = Edge(node, toNode, EdgeDirection.ONEWAY)
+                edge = Edge(node, toNode, EdgeDirection.ONEWAY, naming_provider=self.naming_provider)
                 self._edges_dict[edge.id] = edge
 
         self._build_maps()
@@ -302,12 +302,12 @@ class Graph(object):
 
         for connection, direction in connections.items():
             if direction == EdgeDirection.TWOWAY:
-                edges.append(Edge(node, connection))
-                edges.append(Edge(connection, node))
+                edges.append(Edge(node, connection, naming_provider=self.naming_provider))
+                edges.append(Edge(connection, node, naming_provider=self.naming_provider))
             elif direction == EdgeDirection.TO:
-                edges.append(Edge(node, connection))
+                edges.append(Edge(node, connection, naming_provider=self.naming_provider))
             elif direction == EdgeDirection.FROM:
-                edges.append(Edge(connection, node))
+                edges.append(Edge(connection, node, naming_provider=self.naming_provider))
 
         self.add_edges(edges)
 
@@ -334,7 +334,7 @@ class Graph(object):
                     start_node = self.nodes_at_point(start)
                     end_node = self.nodes_at_point(end)
                     if start_node and end_node:
-                        edge = Edge(start_node, end_node)
+                        edge = Edge(start_node, end_node, naming_provider=self.naming_provider)
                         self._add_edge(edge)
         elif isinstance(edges, Edge):
             self._add_edge(edges)
@@ -764,6 +764,9 @@ class Graph(object):
         low[u] = iter
         new_iter = iter + 1
 
+        if u.pos.as_tuple() == (960, 450):
+            deb = True
+
         # Recur for all the vertices adjacent to this vertex
         for v in self._graph_dict[u]:
             # If v is not visited yet, then make it a child of u
@@ -805,13 +808,6 @@ class Graph(object):
         parent = {node: -1 for node in self._graph_dict.keys()}
         ap = {node: 0 for node in self._graph_dict.keys()}  # To store articulation points
 
-        logging.debug(f"Articulation points evaluation:"
-                      f"\n\tVisited: {visited}"
-                      f"\n\tdisc: {disc}"
-                      f"\n\tlow: {low}"
-                      f"\n\tparent: {parent}"
-                      f"\n\tap: {ap}")
-
         # Call the recursive helper function
         # to find articulation points
         # in DFS tree rooted with vertex 'i'
@@ -819,8 +815,15 @@ class Graph(object):
             if visited[i] == False:
                 self.APUtil(i, visited, ap, parent, low, disc, 0)
 
-        ret = {k:v for k, v in ap.items() if v > 1}
-        logging.debug(f"APs: [{[k for k, v in ret.items()]}]")
+        ret = {k: v for k, v in ap.items() if v > 0}
+
+        logging.debug(f"Articulation points evaluation:"
+                      f"\n\tVisited: {visited}"
+                      f"\n\tdisc: {disc}"
+                      f"\n\tlow: {low}"
+                      f"\n\tparent: {parent}"
+                      f"\n\tap: {ap}"
+                      f"\nAPs: [{[k for k, v in ret.items()]}]")
 
         return ret
 
