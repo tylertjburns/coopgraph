@@ -222,6 +222,8 @@ class Graph(object):
         self._node_edge_map = self.__generate_node_edge_map(self._edges_dict)
         self._pos_node_map = self.__generate_position_node_map(self._nodes_dict)
         self._node_by_name_map = self.__generate_node_by_name_map(self._nodes_dict)
+        self._node_to_node_edge_map = self.__generate_node_to_node_edge_map(self._edges_dict)
+
 
     def __generate_node_edge_map(self, edges: Dict[str, Edge]):
         node_edge_map = {}
@@ -243,9 +245,17 @@ class Graph(object):
         edges_by_pos_dict = {}
 
         for id, edge in edges.items():
-            edges_by_pos_dict.setdefault(edge.start.pos, {})[edge.end.pos] = id
+            edges_by_pos_dict.setdefault(edge.start.pos, {}).setdefault(edge.end.pos, []).append(id)
 
         return edges_by_pos_dict
+
+    def __generate_node_to_node_edge_map(self, edges):
+        edge_ids_by_node = {}
+
+        for id, edge in edges.items():
+            edge_ids_by_node.setdefault(edge.start, {})[edge.end] = id
+
+        return edge_ids_by_node
 
     def __generate_position_node_map(self, nodes):
         pos_node_map = {}
@@ -455,7 +465,9 @@ class Graph(object):
         if not (start and end):
             return None
 
-        edge_id = self._pos_edge_map.get(start, {}).get(end, None)
+        #TODO: Naively taking first entry between positions. Need to be more explicit on implemetnation since there could be multiple edges
+        edges = self._pos_edge_map.get(start, {}).get(end, None)
+        edge_id = edges[0] if edges is not None else None
         if edge_id:
             return self._edges_dict.get(edge_id, None)
 
@@ -463,7 +475,11 @@ class Graph(object):
 
 
     def edge_between(self, nodeA: Node, nodeB: Node):
-        return self._edge_at(nodeA.pos, nodeB.pos)
+        try:
+            edge_id = self._node_to_node_edge_map[nodeA][nodeB]
+            return self._edges_dict.get(edge_id, None)
+        except:
+            return None
 
 
     def __str__(self):
