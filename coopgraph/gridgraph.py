@@ -24,7 +24,7 @@ class GridGraph:
         pos_node_map = {}
         for col in range(0, ncols):
             for row in range(0, nrows):
-                pos = Vector2(row, col)
+                pos = Vector2(col, row)
                 pos_node_map[pos] = Node(str(pos), pos)
 
         return pos_node_map
