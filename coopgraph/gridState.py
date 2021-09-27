@@ -40,3 +40,6 @@ class GridState:
 
     def __repr__(self):
         return str(self.state)
+
+    def __getitem__(self, item):
+        return self.state[item]
