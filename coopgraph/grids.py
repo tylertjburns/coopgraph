@@ -49,8 +49,12 @@ class RectGrid(AGrid):
         column = int((coord.x) // (area_rect.width / self.nColumns))
         row = int((coord.y) // (area_rect.height / self.nRows))
 
-        grid_coord = Vector2(column, row)
-        return grid_coord
+        if 0 <= column < self.nColumns and \
+            0 <= row < self.nRows:
+            grid_coord = Vector2(column, row)
+            return grid_coord
+        else:
+            return None
 
     def left_of(self, row: int, column: int, positions: int = 1):
         if column > positions:

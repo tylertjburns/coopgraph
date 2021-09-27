@@ -1,4 +1,5 @@
-coopstructs==0.12
-Hexy==1.4.3
-numpy==1.19.1
-six==1.15.0
+coopstructs==0.41
+cooptools==0.17
+numpy==1.21.2
+scipy==1.7.1
+Shapely==1.7.1
