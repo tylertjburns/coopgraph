@@ -7,7 +7,7 @@ with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setuptools.setup(name='coopgraph',
-      version='1.4',
+      version='1.5',
       description='Logical Graph Builder that can be used for various problems that can be modeled as a graph data structure',
       url='https://github.com/tylertjburns/coopgraph',
       author='tburns',
