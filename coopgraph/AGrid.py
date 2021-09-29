@@ -74,6 +74,8 @@ class AGrid(ABC):
             else:
                 policy.act_on_gridstate(self.grid[row][column])
 
+        return self.grid[row][column]
+
     def initialize_policies(self):
         for grid in self.grid_enumerator:
             for policy in self._grid_select_policies:
