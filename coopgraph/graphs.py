@@ -406,12 +406,16 @@ class Graph(object):
         elif isinstance(edges, Edge):
             edges.add_disabler(disabler)
 
-    def edges_to_node(self, node: Node):
+    def edges_to_node(self, node: Node, only_enabled: bool = False, ignored_disablers: List[str] = None):
         if not isinstance(node, Node):
             raise Exception(f"input must be of type {Node}, but {type(node)} was provided")
         node_edges = self._node_edge_map[node]
-        return [self._edges_dict[edge_id] for edge_id in node_edges]
+        ret = [self._edges_dict[edge_id] for edge_id in node_edges]
 
+        if only_enabled:
+            ret = [x for x in ret if x.enabled(ignored_disablers)]
+
+        return ret
 
     def disable_edges_to_node(self, node: Node, disabler):
         logging.debug(f"disable {node} with disabler {disabler}")
@@ -645,7 +649,6 @@ class Graph(object):
               g_func: Callable[[Node, Node], float] = None,
               h_func: Callable[[Node, Node], float] = None,
               ignored_disablers:List[str]=None) -> AStarResults:
-
         if not ignored_disablers:
             ignored_disablers = []
 
@@ -662,8 +665,10 @@ class Graph(object):
         open_set = set()
         closed_set = set()
 
-        # Add the start node
-        open_set.add(start_iter)
+        enabled_connections_to_end = self.edges_to_node(end, only_enabled=True, ignored_disablers=ignored_disablers)
+        if len(enabled_connections_to_end) != 0:
+            # Add the start node
+            open_set.add(start_iter)
 
         cc = -1
 
@@ -723,19 +728,14 @@ class Graph(object):
                 new_item.h = calc_h
                 new_item.f = calc_f
 
-
         if results is None:
             ''' No Path Found '''
-            logging.error(f"Unable to find a path from [{start}] to [{end}] -- "
-                          f"\n{pformat(self._graph_dict)}"
-                          f"\n{pformat(steps)}")
+            logging.error(f"Unable to find a path from [{start}] to [{end}]")
 
             return AStarResults(None, steps)
         else:
             ''' Log Path found '''
-            logging.debug(f"Path found from [{start}] to [{end}] -- "
-                          f"\n{pformat(self._graph_dict)}"
-                          f"\n{pformat(steps)}")
+            logging.debug(f"Path found from [{start}] to [{end}] in {len(steps)} steps")
             return results
 
     def path_length(self, path:List[Node]):
@@ -899,29 +899,70 @@ class Graph(object):
 
 if __name__ == "__main__":
     from coopstructs.vectors import Vector2
-    import logging
+    def _build_position_node_map(ncols: int, nrows: int):
+        pos_node_map = {}
+        for col in range(0, ncols):
+            for row in range(0, nrows):
+                pos = Vector2(col, row)
+                pos_node_map[pos] = Node(str(pos), pos)
 
-    logging.basicConfig(level=logging.DEBUG)
+        return pos_node_map
 
-    a = Node(name='A', pos=Vector2(0, 0))
-    b = Node(name='B', pos=Vector2(3, 3))
-    c = Node(name='C', pos=Vector2(2, 0))
-    d = Node(name='D', pos=Vector2(2, 1))
-    e = Node(name='E', pos=Vector2(3, 4))
-    f = Node(name='F', pos=Vector2(5, 5))
 
-    g = {a: [d],
-         b: [c],
-         c: [b, d, e],
-         d: [a, c],
-         e: [c],
-         f: []
-         }
+    def build_graph_dict(pos_node_map: Dict[IVector, Node],
+                         connect_adjacents: bool = True,
+                         connect_diagonals: bool = True) -> Dict[Node, List[Node]]:
+        graph_dict = {}
 
-    graph = Graph(g)
+        for pos in pos_node_map.keys():
+            graph_dict[pos_node_map[pos]] = []
+            adjacents = [
+                Vector2(pos.x - 1, pos.y) if pos_node_map.get(Vector2(pos.x - 1, pos.y), None) else None,  # left
+                Vector2(pos.x + 1, pos.y) if pos_node_map.get(Vector2(pos.x + 1, pos.y), None) else None,  # right
+                Vector2(pos.x, pos.y - 1) if pos_node_map.get(Vector2(pos.x, pos.y - 1), None) else None,  # up
+                Vector2(pos.x, pos.y + 1) if pos_node_map.get(Vector2(pos.x, pos.y + 1), None) else None,  # down
+            ]
 
-    #TEST 1
-    # print(graph.find_isolated_vertices())
+            diagonals = [
+                Vector2(pos.x - 1, pos.y - 1) if pos_node_map.get(Vector2(pos.x - 1, pos.y - 1), None) else None,
+                # UpLeft
+                Vector2(pos.x + 1, pos.y - 1) if pos_node_map.get(Vector2(pos.x + 1, pos.y - 1), None) else None,
+                # UpRight
+                Vector2(pos.x - 1, pos.y + 1) if pos_node_map.get(Vector2(pos.x - 1, pos.y + 1), None) else None,
+                # DownLeft
+                Vector2(pos.x + 1, pos.y + 1) if pos_node_map.get(Vector2(pos.x + 1, pos.y + 1), None) else None
+                # DownRight
+            ]
 
-    #TEST 2
-    print(graph.AP())
+            connections = []
+
+            # add adjacents to connections list
+            if connect_adjacents:
+                connections += adjacents
+
+            # add diagonals to connections list
+            if connect_diagonals:
+                connections += diagonals
+
+            # add connections to the graph_dict for each node
+            for connection_pos in connections:
+                try:
+                    if connection_pos:
+                        graph_dict[pos_node_map[pos]].append(pos_node_map[connection_pos])
+                except:
+                    print(f"{connection_pos} \n"
+                          f"{pos_node_map}")
+                    print(f"connection pos: {type(connection_pos)}")
+                    print(f"first pos_node_map pos: {type([x for x in pos_node_map.keys()][0])}")
+                    raise
+        return graph_dict
+
+    g_dict = build_graph_dict(pos_node_map=_build_position_node_map(30, 30))
+    g = Graph(g_dict)
+
+    import time
+    tic = time.perf_counter()
+    path = g.astar(list(g_dict.keys())[0], list(g_dict.keys())[100])
+    toc = time.perf_counter()
+
+    print(f"{toc - tic}")
