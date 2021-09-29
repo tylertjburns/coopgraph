@@ -1,7 +1,10 @@
 from coopgraph.grids import AGrid
 from coopgraph.graphs import Graph, Node, AStarResults
 from coopstructs.vectors import Vector2, IVector
+from coopstructs.toggles import BooleanToggleable
 from typing import List, Dict
+import logging
+from coopgraph.gridSelectPolicies import IOnGridSelectPolicy, DoNothingPolicy
 
 class GridGraph:
 
@@ -10,9 +13,13 @@ class GridGraph:
                  connect_adjacents: bool = True,
                  connect_diagonals: bool = True,
                  ):
+
+        self.toggle_key = 'toggle'
+
         self._diagonal_connections = {}
         self._connect_adjacents = connect_adjacents
         self._connect_diagonals = connect_diagonals
+        self.enable_diagonal_connections = BooleanToggleable(default=True)
 
         self.grid = grid
         self.pos_node_map = self._build_position_node_map(ncols=self.grid.nColumns, nrows=self.grid.nRows)
@@ -88,27 +95,36 @@ class GridGraph:
 
 
     def toggle_allow_diagonal_connections(self, disabler):
-        self._allow_diagonal_connections = not self._allow_diagonal_connections
+        self.enable_diagonal_connections.toggle()
 
-        print(f"{len(self._diagonal_connections)}\n {self._diagonal_connections}")
+        logging.info(f"{'Disabling' if self.enable_diagonal_connections.value is False else 'Enabling'} {len(self._diagonal_connections)} connections")
         import time
-        print("start")
         tic = time.perf_counter()
-        if self._allow_diagonal_connections:
-            print("enable")
+        if self.enable_diagonal_connections.value:
             self.graph.enable_edges(self._diagonal_connections, disabler)
         else:
-            print("disable")
             self.graph.disable_edges(self._diagonal_connections, disabler)
 
         toc = time.perf_counter()
-        print(f"Toggled the diagonal connections in {toc - tic:0.4f} seconds")
+        logging.info(f"Toggled the diagonal connections in {toc - tic:0.4f} seconds")
 
     def astar_between_grid_pos(self, start: Vector2, end: Vector2) -> AStarResults:
-        start = self.graph.nodes_at_point(start)[0]
-        end = self.graph.nodes_at_point(end)[0]
-        results = self.graph.astar(start, end)
+        results = None
+        if start and end:
+            start = self.graph.nodes_at_point(start)[0]
+            end = self.graph.nodes_at_point(end)[0]
+            results = self.graph.astar(start, end)
         return results
+
+    def act_on_grid(self, row: int, column: int, policies:List[IOnGridSelectPolicy]):
+        ret = self.grid.act_on_grid(row, column, policies)
+
+        if self.grid.at(row, column)[self.toggle_key].value:
+            self.graph.disable_edges_to_node(self.graph.nodes_at_point(Vector2(column, row))[0], self.toggle_key)
+        else:
+            self.graph.enable_edges_to_node(self.graph.nodes_at_point(Vector2(column, row))[0], self.toggle_key)
+
+        return ret
 
 if __name__ == "__main__":
     from coopgraph.grids import RectGrid
