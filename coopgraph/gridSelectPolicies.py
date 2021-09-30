@@ -37,7 +37,7 @@ class DoNothingPolicy(IOnGridSelectPolicy):
         pass
 
 class TogglePolicy(IOnGridSelectPolicy):
-    def __init__(self, key: str, toggle: Toggleable):
+    def __init__(self, key: str, toggle: Type[Toggleable]):
         IOnGridSelectPolicy.__init__(self, key)
         self.toggle = toggle
 
