@@ -79,3 +79,12 @@ class RectGrid(AGrid):
             return self.grid[row + positions][column]
         else:
             return None
+
+if __name__ == "__main__":
+    mygrid = RectGrid(10, 10, default_state={'a': 1})
+    for ii in mygrid:
+        if ii[0].x == 9:
+            ii[1]['a'] = 2
+
+    meets = mygrid.coords_at_condition([('a', 2)])
+    [print(x) for x in meets]

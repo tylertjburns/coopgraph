@@ -2,11 +2,12 @@ from abc import ABC, abstractmethod
 from coopstructs.geometry import Rectangle
 from coopstructs.vectors import IVector, Vector2
 from coopgraph.dataStructs import GridPoint
-from typing import Dict, List
+from typing import Dict, List, Tuple, Any, Set
 import numpy as np
 from coopgraph.gridSelectPolicies import IOnGridSelectPolicy, DoNothingPolicy
 from coopgraph.gridState import GridState
 from pprint import pformat
+
 
 class AGrid(ABC):
     def __init__(self,
@@ -37,6 +38,10 @@ class AGrid(ABC):
     def __getitem__(self, item):
         return self.grid[item]
 
+    def __iter__(self):
+        for row in range(0, self.nRows):
+            for col in range(0, self.nColumns):
+                yield (Vector2(row, col), self.grid[row][col])
 
     @property
     def grid_enumerator(self):
@@ -85,3 +90,18 @@ class AGrid(ABC):
         return np.array([[self.grid[row][column].state[key]
                             for column in range(self.nColumns)]
                             for row in range(self.nRows)])
+
+    def _eqls_or_in(self, val, collection):
+        if type(collection) in [Set, List]:
+            return val in collection
+        else:
+            return val == collection
+
+    def coords_at_condition(self, rules: List[Tuple[Any, Any]]):
+        passes = []
+        for ii in self:
+            for rule in rules:
+                val = ii[1].state.get(rule[0], None)
+                if val and self._eqls_or_in(val, rule[1]):
+                    passes.append(ii[0])
+        return passes

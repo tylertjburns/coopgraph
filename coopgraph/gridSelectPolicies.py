@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from coopgraph.gridState import GridState
 from coopgraph.toggles import Toggleable
+from typing import Type
 
 class IOnGridSelectPolicy(ABC):
     def __init__(self, key: str):

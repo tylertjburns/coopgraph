@@ -2,10 +2,17 @@ from typing import Dict
 
 class GridState:
     def __init__(self, grid, row: int, column: int, state: Dict=None):
-        self.state = state if state else {}
+        self.state = state.copy() if state else {}
         self.row = row
         self.column = column
         self.grid = grid
+
+    def __setitem__(self, key, value):
+        self.state[key] = value
+
+    def __getitem__(self, key):
+        return self.state[key]
+
 
     def copy(self):
         return GridState(self.grid, self.row, self.column, state=self.state)
