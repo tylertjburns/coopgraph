@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from coopstructs.geometry import Rectangle
 from coopstructs.vectors import IVector, Vector2
 from coopgraph.dataStructs import GridPoint
-from typing import Dict, List, Tuple, Any, Set
+from typing import Dict, List, Tuple, Any, Set, Callable
 import numpy as np
 from coopgraph.gridSelectPolicies import IOnGridSelectPolicy, DoNothingPolicy
 from coopgraph.gridState import GridState
@@ -97,11 +97,10 @@ class AGrid(ABC):
         else:
             return val == collection
 
-    def coords_at_condition(self, rules: List[Tuple[Any, Any]]):
+    def coords_at_condition(self, rules: List[Callable[[Dict], bool]]):
         passes = []
         for ii in self:
             for rule in rules:
-                val = ii[1].state.get(rule[0], None)
-                if val and self._eqls_or_in(val, rule[1]):
+                if rule(ii[1].state):
                     passes.append(ii[0])
         return passes

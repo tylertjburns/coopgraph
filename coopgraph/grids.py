@@ -86,5 +86,5 @@ if __name__ == "__main__":
         if ii[0].x == 9:
             ii[1]['a'] = 2
 
-    meets = mygrid.coords_at_condition([('a', 2)])
+    meets = mygrid.coords_at_condition([lambda x: x.get('a', None)==2])
     [print(x) for x in meets]

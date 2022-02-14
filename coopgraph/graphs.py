@@ -75,7 +75,12 @@ class AStarResults:
 
 
 class Edge(object):
-    def __init__(self, nodeA: Node, nodeB: Node, edge_direction=None, naming_provider: Callable[[], str] = None):
+    def __init__(self,
+                 nodeA: Node,
+                 nodeB: Node,
+                 edge_direction=None,
+                 edge_weight: float = None,
+                 naming_provider: Callable[[], str] = None):
         self.start = nodeA
         self.end = nodeB
         if edge_direction is None:
@@ -84,6 +89,7 @@ class Edge(object):
         self._disablers = set()
         self.length = nodeA.pos.distance_from(nodeB.pos)
         self.id = naming_provider() if naming_provider else str(uuid.uuid4())
+        self.weight = edge_weight
 
     def __str__(self):
         char_dict = {
