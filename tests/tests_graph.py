@@ -161,7 +161,47 @@ class TestGraph(unittest.TestCase):
 
         graph = Graph(g)
 
-        assert set(graph.edges_to_node(c)) == {graph.edge_between(b, c), graph.edge_between(d, c), graph.edge_between(e, c), graph.edge_between(c, b), graph.edge_between(c, d), graph.edge_between(c, e)}
+        assert set(graph.edges_to_node(c)) == {graph.edge_between(b, c), graph.edge_between(d, c), graph.edge_between(e, c)}
+
+    def test_edges_from_node(self):
+        a = Node(name='A', pos=Vector2(0, 0))
+        b = Node(name='B', pos=Vector2(3, 3))
+        c = Node(name='C', pos=Vector2(2, 0))
+        d = Node(name='D', pos=Vector2(2, 1))
+        e = Node(name='E', pos=Vector2(3, 4))
+        f = Node(name='F', pos=Vector2(5, 5))
+
+        g = {a: [d],
+             b: [c],
+             c: [b, d, e],
+             d: [a, c],
+             e: [c, f],
+             f: []
+             }
+
+        graph = Graph(g)
+
+        assert set(graph.edges_from_node(c)) == {graph.edge_between(c, b), graph.edge_between(c, d), graph.edge_between(c, e)}
+
+    def test_edges_including_node(self):
+        a = Node(name='A', pos=Vector2(0, 0))
+        b = Node(name='B', pos=Vector2(3, 3))
+        c = Node(name='C', pos=Vector2(2, 0))
+        d = Node(name='D', pos=Vector2(2, 1))
+        e = Node(name='E', pos=Vector2(3, 4))
+        f = Node(name='F', pos=Vector2(5, 5))
+
+        g = {a: [d],
+             b: [c],
+             c: [b, d, e],
+             d: [a, c],
+             e: [c, f],
+             f: []
+             }
+
+        graph = Graph(g)
+
+        assert set(graph.edges_including_node(c)) == {graph.edge_between(c, b), graph.edge_between(c, d), graph.edge_between(c, e), graph.edge_between(b, c), graph.edge_between(d, c), graph.edge_between(e, c)}
 
     def test_disable_edges_to_node(self):
         pass

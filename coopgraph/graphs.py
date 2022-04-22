@@ -416,12 +416,35 @@ class Graph(object):
         if not isinstance(node, Node):
             raise Exception(f"input must be of type {Node}, but {type(node)} was provided")
         node_edges = self._node_edge_map[node]
+        ret = [self._edges_dict[edge_id] for edge_id in node_edges if self._edges_dict[edge_id].end == node]
+
+        if only_enabled:
+            ret = [x for x in ret if x.enabled(ignored_disablers)]
+
+        return ret
+
+    def edges_including_node(self, node: Node, only_enabled: bool = False, ignored_disablers: List[str] = None):
+        if not isinstance(node, Node):
+            raise Exception(f"input must be of type {Node}, but {type(node)} was provided")
+        node_edges = self._node_edge_map[node]
         ret = [self._edges_dict[edge_id] for edge_id in node_edges]
 
         if only_enabled:
             ret = [x for x in ret if x.enabled(ignored_disablers)]
 
         return ret
+
+    def edges_from_node(self, node: Node, only_enabled: bool = False, ignored_disablers: List[str] = None):
+        if not isinstance(node, Node):
+            raise Exception(f"input must be of type {Node}, but {type(node)} was provided")
+        node_edges = self._node_edge_map[node]
+        ret = [self._edges_dict[edge_id] for edge_id in node_edges if self._edges_dict[edge_id].start == node]
+
+        if only_enabled:
+            ret = [x for x in ret if x.enabled(ignored_disablers)]
+
+        return ret
+
 
     def disable_edges_to_node(self, node: Node, disabler):
         logging.debug(f"disable {node} with disabler {disabler}")
