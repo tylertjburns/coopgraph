@@ -345,7 +345,7 @@ class Graph(object):
         """ assumes that edge is of type set, tuple or list;
             between two vertices can be multiple edges!
         """
-        if isinstance(edges, list) and isinstance(edges[0], Edge):
+        if isinstance(edges, list) and len(edges) > 0 and isinstance(edges[0], Edge):
             for edge in edges:
                 self._add_edge(edge)
         elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
