@@ -1,5 +1,5 @@
 import unittest
-from coopgraph.grids import RectGrid
+from cooptools.sectors.grids import RectGrid
 from coopgraph.gridgraph import GridGraph
 from coopstructs.vectors import Vector2
 

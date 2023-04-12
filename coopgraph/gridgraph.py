@@ -1,15 +1,15 @@
-from coopgraph.grids import AGrid
+from cooptools.sectors.grids import Grid
 from coopgraph.graphs import Graph, Node, AStarResults
 from coopstructs.vectors import Vector2, IVector
 from coopstructs.toggles import BooleanToggleable
 from typing import List, Dict
 import logging
-from coopgraph.gridSelectPolicies import IOnGridSelectPolicy, DoNothingPolicy
+from cooptools.dictPolicies import IActOnDictPolicy, DoNothingPolicy
 
 class GridGraph:
 
     def __init__(self,
-                 grid: AGrid,
+                 grid: Grid,
                  connect_adjacents: bool = True,
                  connect_diagonals: bool = True,
                  ):
@@ -116,7 +116,7 @@ class GridGraph:
             results = self.graph.astar(start, end)
         return results
 
-    def act_on_grid(self, row: int, column: int, policies:List[IOnGridSelectPolicy]):
+    def act_on_grid(self, row: int, column: int, policies:List[IActOnDictPolicy]):
         ret = self.grid.act_on_grid(row, column, policies)
 
         if self.grid.at(row, column)[self.toggle_key].value:
@@ -127,7 +127,7 @@ class GridGraph:
         return ret
 
 if __name__ == "__main__":
-    from coopgraph.grids import RectGrid
+    from cooptools.sectors.grids import RectGrid
     import logging
     import time
 

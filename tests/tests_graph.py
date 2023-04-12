@@ -1,6 +1,6 @@
 import unittest
 from coopgraph.graphs import Graph, Node, Edge, EdgeDirection
-from coopgraph.dataStructs import Vector2
+from coopstructs.vectors import Vector2
 
 class TestGraph(unittest.TestCase):
 

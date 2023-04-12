@@ -2,24 +2,17 @@
 A simple Python graph class, demonstrating the essential
 facts and functionalities of graphs.
 """
-from coopstructs.vectors import IVector
 from enum import Enum
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Tuple
 import uuid
 import logging
 import copy
-from pprint import pformat
-
-class EdgeDirection(Enum):
-    ONEWAY = 1
-    TWOWAY = 2
-    FROM = 3
-    TO = 4
+import cooptools.geometry_utils.vector_utils as vec_util
 
 class Node(object):
-    def __init__(self, name:str, pos: IVector):
-        if not isinstance(pos, IVector) :
-            raise TypeError(f"position must be of type {type(IVector)}, but {type(pos)} was provided")
+    def __init__(self, name:str, pos: Tuple[float, ...]):
+        if not isinstance(pos, Tuple) :
+            raise TypeError(f"position must be of type {type(Tuple[float, ...])}, but {type(pos)} was provided")
 
         self.name = name
         self.pos = pos
@@ -78,25 +71,17 @@ class Edge(object):
     def __init__(self,
                  nodeA: Node,
                  nodeB: Node,
-                 edge_direction=None,
                  edge_weight: float = None,
                  naming_provider: Callable[[], str] = None):
         self.start = nodeA
         self.end = nodeB
-        if edge_direction is None:
-            edge_direction = EdgeDirection.ONEWAY
-        self.direction = edge_direction
         self._disablers = set()
         self.length = nodeA.pos.distance_from(nodeB.pos)
         self.id = naming_provider() if naming_provider else str(uuid.uuid4())
         self.weight = edge_weight
 
     def __str__(self):
-        char_dict = {
-            EdgeDirection.ONEWAY: "->",
-            EdgeDirection.TWOWAY: "<->"
-        }
-        return f"{{{self.start} {char_dict.get(self.direction)} {self.end}}}"
+        return f"{{{self.start} -> {self.end}}}"
 
     def __hash__(self):
         return hash(str(self.id))
@@ -213,7 +198,7 @@ class Graph(object):
         for node in graph_dict.keys():
             self._nodes_dict[node.name] = node
             for toNode in graph_dict[node]:
-                edge = Edge(node, toNode, EdgeDirection.ONEWAY, naming_provider=self.naming_provider)
+                edge = Edge(node, toNode, naming_provider=self.naming_provider)
                 self._edges_dict[edge.id] = edge
 
         self._build_maps()
@@ -229,6 +214,7 @@ class Graph(object):
         self._pos_node_map = self.__generate_position_node_map(self._nodes_dict)
         self._node_by_name_map = self.__generate_node_by_name_map(self._nodes_dict)
         self._node_to_node_edge_map = self.__generate_node_to_node_edge_map(self._edges_dict)
+
 
 
     def __generate_node_edge_map(self, edges: Dict[str, Edge]):
@@ -310,24 +296,12 @@ class Graph(object):
         return self._edges(edge_ids)
 
 
-    def add_node_with_connnections(self, node: Node, connections: Dict[Node, EdgeDirection]):
+    def add_node_with_connnections(self, node: Node, connections: List[Node]):
         self.add_node(node)
         edges = []
 
-        provided = set(connections.values())
-        valid = {EdgeDirection.TWOWAY, EdgeDirection.FROM, EdgeDirection.TO}
-        if not provided.issubset(valid):
-            errors = provided.difference(valid)
-            raise NotImplementedError(f"Connections can only be supplied as {EdgeDirection.TWOWAY._name_}, {EdgeDirection.FROM._name_}, {EdgeDirection.TO._name_}. However, {errors} were provided.")
-
-        for connection, direction in connections.items():
-            if direction == EdgeDirection.TWOWAY:
-                edges.append(Edge(node, connection, naming_provider=self.naming_provider))
-                edges.append(Edge(connection, node, naming_provider=self.naming_provider))
-            elif direction == EdgeDirection.TO:
-                edges.append(Edge(node, connection, naming_provider=self.naming_provider))
-            elif direction == EdgeDirection.FROM:
-                edges.append(Edge(connection, node, naming_provider=self.naming_provider))
+        for connection, direction in connections:
+            edges.append(Edge(node, connection, naming_provider=self.naming_provider))
 
         self.add_edges(edges)
 
@@ -341,14 +315,14 @@ class Graph(object):
             self._nodes_dict[node.name] = node
         self._build_maps()
 
-    def add_edges(self, edges):
+    def add_edges(self, edges: List[Edge]):
         """ assumes that edge is of type set, tuple or list;
             between two vertices can be multiple edges!
         """
         if isinstance(edges, list) and len(edges) > 0 and isinstance(edges[0], Edge):
             for edge in edges:
                 self._add_edge(edge)
-        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
+        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], Tuple):
             for start in edges.keys():
                 for end in edges[start]:
                     start_node = self.nodes_at_point(start)[0]
@@ -367,7 +341,7 @@ class Graph(object):
         if isinstance(edges, list) and isinstance(edges[0], Edge):
             for edge in edges:
                 self._remove_edge(edge)
-        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
+        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], Tuple):
             for start in edges.keys():
                 for end in edges[start]:
                     start_node = self.nodes_at_point(start)[0]
@@ -387,7 +361,7 @@ class Graph(object):
         if isinstance(edges, list) and isinstance(edges[0], Edge):
             for edge in edges:
                 edge.remove_disabler(disabler)
-        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
+        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], Tuple):
             for start in edges.keys():
                 for end in edges[start]:
                     edge = self._edge_at(start, end)
@@ -403,7 +377,7 @@ class Graph(object):
         if isinstance(edges, list) and isinstance(edges[0], Edge):
             for edge in edges:
                 edge.add_disabler(disabler)
-        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], IVector):
+        elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], Tuple):
             for start in edges.keys():
                 for end in edges[start]:
                     edge = self._edge_at(start, end)
@@ -483,15 +457,15 @@ class Graph(object):
             self._edges_dict[edge.id] = edge
         self._build_maps()
 
-    def nodes_at_point(self, pos: IVector) -> List[Node]:
+    def nodes_at_point(self, pos: Tuple[float, ...]) -> List[Node]:
         node_ids = self._pos_node_map.get(pos, [])
 
         return [self._nodes_dict.get(node_id, None) for node_id in node_ids]
 
-    def nodes_at(self, points: List[IVector]) -> Dict[IVector, List[Node]]:
+    def nodes_at(self, points: List[Tuple[float, ...]]) -> Dict[Tuple[float, ...], List[Node]]:
         return {point: self.nodes_at_point(point) for point in points}
 
-    def _edge_at(self, start: IVector, end: IVector):
+    def _edge_at(self, start: Tuple[float, ...], end: Tuple[float, ...]):
         # start = self.nodes_at_point(start).pos
         # end = self.nodes_at_point(end).pos
 
@@ -877,11 +851,11 @@ class Graph(object):
         return ret
 
 
-    def closest_nodes(self, pos: IVector) -> List[Node]:
+    def closest_nodes(self, pos: Tuple[float, ...]) -> List[Node]:
         closest_nodes = None
         closest_distance = None
         for node in self.nodes:
-            distance = node.pos.distance_from(pos)
+            distance = vec_util.distance_between(node.pos, pos)
             if closest_nodes is None or distance < closest_distance:
                 closest_nodes = [node]
                 closest_distance = distance
@@ -916,7 +890,6 @@ class Graph(object):
     #     self.walks[name] = ret
     #     return ret
 
-
     def copy(self):
         copy = Graph(graph_dict=self._graph_dict)
         for edge in copy.edges:
@@ -927,71 +900,4 @@ class Graph(object):
         return copy
 
 if __name__ == "__main__":
-    from coopstructs.vectors import Vector2
-    def _build_position_node_map(ncols: int, nrows: int):
-        pos_node_map = {}
-        for col in range(0, ncols):
-            for row in range(0, nrows):
-                pos = Vector2(col, row)
-                pos_node_map[pos] = Node(str(pos), pos)
-
-        return pos_node_map
-
-
-    def build_graph_dict(pos_node_map: Dict[IVector, Node],
-                         connect_adjacents: bool = True,
-                         connect_diagonals: bool = True) -> Dict[Node, List[Node]]:
-        graph_dict = {}
-
-        for pos in pos_node_map.keys():
-            graph_dict[pos_node_map[pos]] = []
-            adjacents = [
-                Vector2(pos.x - 1, pos.y) if pos_node_map.get(Vector2(pos.x - 1, pos.y), None) else None,  # left
-                Vector2(pos.x + 1, pos.y) if pos_node_map.get(Vector2(pos.x + 1, pos.y), None) else None,  # right
-                Vector2(pos.x, pos.y - 1) if pos_node_map.get(Vector2(pos.x, pos.y - 1), None) else None,  # up
-                Vector2(pos.x, pos.y + 1) if pos_node_map.get(Vector2(pos.x, pos.y + 1), None) else None,  # down
-            ]
-
-            diagonals = [
-                Vector2(pos.x - 1, pos.y - 1) if pos_node_map.get(Vector2(pos.x - 1, pos.y - 1), None) else None,
-                # UpLeft
-                Vector2(pos.x + 1, pos.y - 1) if pos_node_map.get(Vector2(pos.x + 1, pos.y - 1), None) else None,
-                # UpRight
-                Vector2(pos.x - 1, pos.y + 1) if pos_node_map.get(Vector2(pos.x - 1, pos.y + 1), None) else None,
-                # DownLeft
-                Vector2(pos.x + 1, pos.y + 1) if pos_node_map.get(Vector2(pos.x + 1, pos.y + 1), None) else None
-                # DownRight
-            ]
-
-            connections = []
-
-            # add adjacents to connections list
-            if connect_adjacents:
-                connections += adjacents
-
-            # add diagonals to connections list
-            if connect_diagonals:
-                connections += diagonals
-
-            # add connections to the graph_dict for each node
-            for connection_pos in connections:
-                try:
-                    if connection_pos:
-                        graph_dict[pos_node_map[pos]].append(pos_node_map[connection_pos])
-                except:
-                    print(f"{connection_pos} \n"
-                          f"{pos_node_map}")
-                    print(f"connection pos: {type(connection_pos)}")
-                    print(f"first pos_node_map pos: {type([x for x in pos_node_map.keys()][0])}")
-                    raise
-        return graph_dict
-
-    g_dict = build_graph_dict(pos_node_map=_build_position_node_map(30, 30))
-    g = Graph(g_dict)
-
-    import time
-    tic = time.perf_counter()
-    path = g.astar(list(g_dict.keys())[0], list(g_dict.keys())[100])
-    toc = time.perf_counter()
-
-    print(f"{toc - tic}")
+    pass
