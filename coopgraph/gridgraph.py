@@ -1,10 +1,8 @@
 from cooptools.sectors.grids import Grid
 from coopgraph.graphs import Graph, Node, AStarResults
-from coopstructs.vectors import Vector2, IVector
 from coopstructs.toggles import BooleanToggleable
-from typing import List, Dict
-import logging
-from cooptools.dictPolicies import IActOnDictPolicy, DoNothingPolicy
+from typing import List, Dict, Tuple
+from cooptools.dictPolicies import IActOnDictPolicy
 
 class GridGraph:
 
@@ -23,7 +21,7 @@ class GridGraph:
 
         self.grid = grid
         self.pos_node_map = self._build_position_node_map(ncols=self.grid.nColumns, nrows=self.grid.nRows)
-        graph_dict = self.graph_dict_provider(self.pos_node_map)
+        graph_dict = self.build_graph_dict(self.pos_node_map)
         self.graph = Graph(graph_dict=graph_dict)
 
 
@@ -31,16 +29,13 @@ class GridGraph:
         pos_node_map = {}
         for col in range(0, ncols):
             for row in range(0, nrows):
-                pos = Vector2(col, row)
+                pos = (col, row)
                 pos_node_map[pos] = Node(str(pos), pos)
 
         return pos_node_map
 
-    def graph_dict_provider(self, pos_node_map: Dict[IVector, Node]) -> Dict[Node, List[Node]]:
-        return self.build_graph_dict(pos_node_map, connect_adjacents=self._connect_adjacents, connect_diagonals=self._connect_diagonals)
-
     def build_graph_dict(self,
-                         pos_node_map: Dict[IVector, Node],
+                         pos_node_map: Dict[Tuple[float, ...], Node],
                          connect_adjacents: bool=True,
                          connect_diagonals: bool = True)-> Dict[Node, List[Node]]:
         graph_dict = {}
@@ -48,21 +43,17 @@ class GridGraph:
         for pos in pos_node_map.keys():
             graph_dict[pos_node_map[pos]] = []
             adjacents = [
-                Vector2(pos.x - 1, pos.y) if pos_node_map.get(Vector2(pos.x - 1, pos.y), None) else None,  # left
-                Vector2(pos.x + 1, pos.y) if pos_node_map.get(Vector2(pos.x + 1, pos.y), None) else None,  # right
-                Vector2(pos.x, pos.y - 1) if pos_node_map.get(Vector2(pos.x, pos.y - 1), None) else None,  # up
-                Vector2(pos.x, pos.y + 1) if pos_node_map.get(Vector2(pos.x, pos.y + 1), None) else None,  # down
+                (pos[0] - 1, pos[1]) if pos_node_map.get((pos[0] - 1, pos[1]), None) else None,  # left
+                (pos[0] + 1, pos[1]) if pos_node_map.get((pos[0] + 1, pos[1]), None) else None,  # right
+                (pos[0], pos[1] - 1) if pos_node_map.get((pos[0], pos[1] - 1), None) else None,  # up
+                (pos[0], pos[1] + 1) if pos_node_map.get((pos[0], pos[1] + 1), None) else None,  # down
             ]
 
             diagonals = [
-                Vector2(pos.x - 1, pos.y - 1) if pos_node_map.get(Vector2(pos.x - 1, pos.y - 1), None) else None,
-                # UpLeft
-                Vector2(pos.x + 1, pos.y - 1) if pos_node_map.get(Vector2(pos.x + 1, pos.y - 1), None) else None,
-                # UpRight
-                Vector2(pos.x - 1, pos.y + 1) if pos_node_map.get(Vector2(pos.x - 1, pos.y + 1), None) else None,
-                # DownLeft
-                Vector2(pos.x + 1, pos.y + 1) if pos_node_map.get(Vector2(pos.x + 1, pos.y + 1), None) else None
-                # DownRight
+                (pos[0] - 1, pos[1] - 1) if pos_node_map.get((pos[0] - 1, pos[1] - 1), None) else None, # UpLeft
+                (pos[0] + 1, pos[1] - 1) if pos_node_map.get((pos[0] + 1, pos[1] - 1), None) else None, # UpRight
+                (pos[0] - 1, pos[1] + 1) if pos_node_map.get((pos[0] - 1, pos[1] + 1), None) else None, # DownLeft
+                (pos[0] + 1, pos[1] + 1) if pos_node_map.get((pos[0] + 1, pos[1] + 1), None) else None # DownRight
             ]
 
             connections = []
@@ -108,7 +99,7 @@ class GridGraph:
         toc = time.perf_counter()
         logging.info(f"Toggled the diagonal connections in {toc - tic:0.4f} seconds")
 
-    def astar_between_grid_pos(self, start: Vector2, end: Vector2) -> AStarResults:
+    def astar_between_grid_pos(self, start: Tuple[int, ...], end: Tuple[int, ...]) -> AStarResults:
         results = None
         if start and end:
             start = self.graph.nodes_at_point(start)[0]
@@ -117,12 +108,12 @@ class GridGraph:
         return results
 
     def act_on_grid(self, row: int, column: int, policies:List[IActOnDictPolicy]):
-        ret = self.grid.act_on_grid(row, column, policies)
+        ret = self.grid.act_at_loc(row, column, policies)
 
         if self.grid.at(row, column)[self.toggle_key].value:
-            self.graph.disable_edges_to_node(self.graph.nodes_at_point(Vector2(column, row))[0], self.toggle_key)
+            self.graph.disable_edges_to_node(self.graph.nodes_at_point((column, row))[0], self.toggle_key)
         else:
-            self.graph.enable_edges_to_node(self.graph.nodes_at_point(Vector2(column, row))[0], self.toggle_key)
+            self.graph.enable_edges_to_node(self.graph.nodes_at_point((column, row))[0], self.toggle_key)
 
         return ret
 
@@ -147,8 +138,8 @@ if __name__ == "__main__":
     toc = time.perf_counter()
     logging.info(f"Done {toc - tic}")
 
-    start = Vector2(0, 0)
-    end = Vector2(dimension - 1, dimension - 1)
+    start = (0, 0)
+    end = (dimension - 1, dimension - 1)
 
     logging.info(f"Starting Astar")
     tic = time.perf_counter()

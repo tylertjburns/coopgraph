@@ -76,12 +76,12 @@ class Edge(object):
         self.start = nodeA
         self.end = nodeB
         self._disablers = set()
-        self.length = nodeA.pos.distance_from(nodeB.pos)
+        self.length = vec_util.distance_between(nodeA.pos, nodeB.pos)
         self.id = naming_provider() if naming_provider else str(uuid.uuid4())
         self.weight = edge_weight
 
     def __str__(self):
-        return f"{{{self.start} -> {self.end}}}"
+        return f"{self.start.name}-->{self.end.name}}}"
 
     def __hash__(self):
         return hash(str(self.id))
@@ -719,11 +719,9 @@ class Graph(object):
 
                 # calculate new g, h, f from current pivot node to the new node
                 calc_g = current_item.g + g_func(current_item.graph_node,
-                                                 new_node) if g_func else new_node.pos.distance_from(
-                    current_item.graph_node.pos)
+                                                 new_node) if g_func else vec_util.distance_between(new_node.pos, current_item.graph_node.pos)
                 calc_h = h_func(new_node,
-                                end_iter.graph_node) if h_func else new_node.pos.distance_from(
-                    end_iter.graph_node.pos)
+                                end_iter.graph_node) if h_func else vec_util.distance_between(new_node.pos, end_iter.graph_node.pos)
                 calc_f = calc_g + calc_h
 
                 new_item.parent = current_item
