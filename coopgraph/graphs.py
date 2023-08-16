@@ -8,6 +8,7 @@ import uuid
 import logging
 import copy
 import cooptools.geometry_utils.vector_utils as vec_util
+from cooptools.common import flattened_list_of_lists
 
 class Node(object):
     def __init__(self, name:str, pos: Tuple[float, ...]):
@@ -81,7 +82,7 @@ class Edge(object):
         self.weight = edge_weight
 
     def __str__(self):
-        return f"{self.start.name}-->{self.end.name}}}"
+        return f"{self.start.name}-->{self.end.name}"
 
     def __hash__(self):
         return hash(str(self.id))
@@ -295,6 +296,22 @@ class Graph(object):
     def edges_by_id(self, edge_ids: List[str]):
         return self._edges(edge_ids)
 
+    @property
+    def DestinationNodes(self):
+        return flattened_list_of_lists(self._graph_dict.values(), unique=True)
+
+    @property
+    def Sources(self) -> List[Node]:
+        dests = self.DestinationNodes
+        return [n for n, cnxn in self._graph_dict.items() if n not in dests and len(cnxn) != 0]
+
+    @property
+    def Sinks(self) -> List[Node]:
+        return [n for n, cnxn in self._graph_dict.items() if len(cnxn) == 0 and n not in self.Orphans]
+
+    @property
+    def Orphans(self) -> List[Node]:
+        return [n for n, edges in self._node_edge_map.items() if len(edges) == 0]
 
     def add_node_with_connnections(self, node: Node, connections: List[Node]):
         self.add_node(node)
