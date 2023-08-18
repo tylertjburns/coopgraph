@@ -22,7 +22,7 @@ class Node(object):
         return f"{str(self.name)} at {self.pos}"
 
     def __eq__(self, other):
-        if isinstance(other, Node) and other.name == self.name and self.pos == other.pos:
+        if isinstance(other, Node) and other.name == self.name:
             return True
         else:
             return False
@@ -349,6 +349,8 @@ class Graph(object):
                         self._add_edge(edge)
         elif isinstance(edges, Edge):
             self._add_edge(edges)
+        else:
+            raise ValueError()
 
     def remove_edges(self, edges):
         """ assumes that edge is of type set, tuple or list;
@@ -469,9 +471,10 @@ class Graph(object):
         self._build_maps()
 
     def _add_edge(self, edge: Edge):
-        existing_edge = self._edge_at(edge.start.pos, edge.end.pos)
-        if existing_edge is None:
+        if edge.id not in self._edges_dict.keys():
             self._edges_dict[edge.id] = edge
+        else:
+            raise ValueError(f"Edge with id: {edge.id} already exists")
         self._build_maps()
 
     def nodes_at_point(self, pos: Tuple[float, ...]) -> List[Node]:
