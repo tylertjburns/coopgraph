@@ -13,7 +13,7 @@ from cooptools.common import flattened_list_of_lists
 class Node(object):
     def __init__(self, name:str, pos: Tuple[float, ...]):
         if not isinstance(pos, Tuple) :
-            raise TypeError(f"position must be of type {type(Tuple[float, ...])}, but {type(pos)} was provided")
+            raise TypeError(f"position must be of type {Tuple[float, ...]}, but {type(pos)} was provided")
 
         self.name = name
         self.pos = pos
@@ -801,9 +801,6 @@ class Graph(object):
         disc[u] = iter
         low[u] = iter
         new_iter = iter + 1
-
-        if u.pos.as_tuple() == (960, 450):
-            deb = True
 
         # Recur for all the vertices adjacent to this vertex
         for v in self._graph_dict[u]:
