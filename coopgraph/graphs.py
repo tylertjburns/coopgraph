@@ -3,7 +3,7 @@ A simple Python graph class, demonstrating the essential
 facts and functionalities of graphs.
 """
 from enum import Enum
-from typing import List, Dict, Callable, Tuple
+from typing import List, Dict, Callable, Tuple, Iterable
 import uuid
 import logging
 import copy
@@ -13,7 +13,7 @@ from cooptools.common import flattened_list_of_lists
 class Node(object):
     def __init__(self, name:str, pos: Tuple[float, ...]):
         if not isinstance(pos, Tuple) :
-            raise TypeError(f"position must be of type {Tuple[float, ...]}, but {type(pos)} was provided")
+            raise TypeError(f"position must be of type {type(Tuple[float, ...])}, but {type(pos)} was provided")
 
         self.name = name
         self.pos = pos
@@ -32,6 +32,12 @@ class Node(object):
 
     def __repr__(self):
         return self.__str__()
+
+    def as_jsonable_dict(self):
+        return {
+            f'{self.name=}'.split('=')[0].replace('self.', ''): self.name,
+            f'{self.pos=}'.split('=')[0].replace('self.', ''): self.pos,
+        }
 
 class _AStarMetrics():
     def __init__(self, parent, graph_node: Node):
@@ -73,13 +79,17 @@ class Edge(object):
                  nodeA: Node,
                  nodeB: Node,
                  edge_weight: float = None,
-                 naming_provider: Callable[[], str] = None):
+                 naming_provider: Callable[[], str] = None,
+                 disablers: Iterable = None):
         self.start = nodeA
         self.end = nodeB
         self._disablers = set()
         self.length = vec_util.distance_between(nodeA.pos, nodeB.pos)
         self.id = naming_provider() if naming_provider else str(uuid.uuid4())
         self.weight = edge_weight
+
+        if disablers is not None:
+            [self.add_disabler(x) for x in disablers]
 
     def __str__(self):
         return f"{self.start.name}-->{self.end.name}"
@@ -126,6 +136,17 @@ class Edge(object):
     def disablers(self):
         return copy.deepcopy(self._disablers)
 
+    def as_jsonable_dict(self):
+        return {
+            f'{self.id=}'.split('=')[0].replace('self.', ''): self.id,
+            f'{self.start=}'.split('=')[0].replace('self.', ''): self.start,
+            f'{self.end=}'.split('=')[0].replace('self.', ''): self.end,
+            f'{self._disablers=}'.split('=')[0].replace('self.', '').replace("_", ""): self._disablers,
+            f'{self.length=}'.split('=')[0].replace('self.', ''): self.length,
+            f'{self.weight=}'.split('=')[0].replace('self.', ''): self.weight,
+        }
+
+
 class Graph(object):
 
     #TODO: Add a "from file" constructor cls method
@@ -171,6 +192,25 @@ class Graph(object):
     #
     #     return edges
 
+    def as_jsonable_dict(self):
+        nodes = {}
+        edges = {}
+
+        for f, to in self._graph_dict.items():
+            if f.name not in nodes:
+                nodes[f.name] = f.as_jsonable_dict()
+
+            for t in to:
+                if t.name not in nodes:
+                    nodes[t.name] = f.as_jsonable_dict()
+
+                edge_between = self.edge_between(f, t)
+                edges.setdefault(edge_between.id, []).append(edge_between.as_jsonable_dict())
+
+        return {
+            'nodes': nodes,
+            'edges': edges
+        }
 
 
     def __init__(self, graph_dict: Dict[Node, List[Node]]=None, naming_provider: Callable[[], str] = None):
@@ -771,7 +811,7 @@ class Graph(object):
 
         return length
 
-    def node_by_name(self, node_name: str):
+    def node_by_name(self, node_name: str) -> Node:
         # nodes = self.nodes()
         # return next(node for node in nodes if node.name == node_name)
         return self._nodes_dict[self._node_by_name_map[node_name]]
