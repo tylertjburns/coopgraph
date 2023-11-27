@@ -317,7 +317,7 @@ class Graph(object):
         self.add_node(node)
         edges = []
 
-        for connection, direction in connections:
+        for connection in connections:
             edges.append(Edge(node, connection, naming_provider=self.naming_provider))
 
         self.add_edges(edges)
