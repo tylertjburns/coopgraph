@@ -139,9 +139,9 @@ class Edge(object):
     def as_jsonable_dict(self):
         return {
             f'{self.id=}'.split('=')[0].replace('self.', ''): self.id,
-            f'{self.start=}'.split('=')[0].replace('self.', ''): self.start,
-            f'{self.end=}'.split('=')[0].replace('self.', ''): self.end,
-            f'{self._disablers=}'.split('=')[0].replace('self.', '').replace("_", ""): self._disablers,
+            f'{self.start=}'.split('=')[0].replace('self.', ''): self.start.as_jsonable_dict(),
+            f'{self.end=}'.split('=')[0].replace('self.', ''): self.end.as_jsonable_dict(),
+            f'{self._disablers=}'.split('=')[0].replace('self.', '').replace("_", ""): list(self._disablers),
             f'{self.length=}'.split('=')[0].replace('self.', ''): self.length,
             f'{self.weight=}'.split('=')[0].replace('self.', ''): self.weight,
         }
