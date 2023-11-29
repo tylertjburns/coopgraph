@@ -363,12 +363,15 @@ class Graph(object):
     def Orphans(self) -> List[Node]:
         return [n for n, edges in self._node_edge_map.items() if len(edges) == 0]
 
-    def add_node_with_connnections(self, node: Node, connections: List[Node]):
-        self.add_node(node)
+    def add_node_with_connections(self, node: Node, connections: List[Node]):
+        self.add_nodes_with_connections({node: connections})
+
+    def add_nodes_with_connections(self, node_connections: Dict[Node, Iterable[Node]]):
         edges = []
 
-        for connection in connections:
-            edges.append(Edge(node, connection, naming_provider=self.naming_provider))
+        for frm, tos in node_connections.items():
+            for to in tos:
+                edges.append(Edge(frm, to, naming_provider=self.naming_provider))
 
         self.add_edges(edges)
 
