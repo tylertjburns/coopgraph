@@ -139,8 +139,8 @@ class Edge(object):
     def as_jsonable_dict(self):
         return {
             f'{self.id=}'.split('=')[0].replace('self.', ''): self.id,
-            f'{self.start=}'.split('=')[0].replace('self.', ''): self.start.as_jsonable_dict(),
-            f'{self.end=}'.split('=')[0].replace('self.', ''): self.end.as_jsonable_dict(),
+            f'{self.start=}'.split('=')[0].replace('self.', ''): self.start.name,
+            f'{self.end=}'.split('=')[0].replace('self.', ''): self.end.name,
             f'{self._disablers=}'.split('=')[0].replace('self.', '').replace("_", ""): list(self._disablers),
             f'{self.length=}'.split('=')[0].replace('self.', ''): self.length,
             f'{self.weight=}'.split('=')[0].replace('self.', ''): self.weight,
@@ -228,12 +228,14 @@ class Graph(object):
 
         ''' self._edges[start: Vector2][end: Vector2] = edge: Edge '''
         self._pos_edge_map = None
-        ''' dict with key: Node, value: edge_names: List[str] '''
+        '''  Dict[Node, List[edge_names]'''
         self._node_edge_map = None
-        ''' dict with key: IVector, value: node_id '''
+        ''' Dict[IVector, node_id]'''
         self._pos_node_map = None
-        ''' dict with key: node_name, value node_id'''
+        ''' Dict[node_name, node_id]'''
         self._node_by_name_map = None
+        ''' Dict[from, Dict[to, edge]]'''
+        self._node_to_node_edge_map = None
 
 
         for node in graph_dict.keys():
@@ -324,6 +326,10 @@ class Graph(object):
     def nodes(self) -> List[Node]:
         return self._nodes()
 
+    @property
+    def NodesById(self) -> Dict[str, Node]:
+        return {k: v for k, v in self._nodes_dict.items()}
+
     def _edges(self, ids: List[str] = None) -> List[Edge]:
         """ returns the edges of a graph """
         # return copy.deepcopy([edge for id, edge in self._edges.items()])
@@ -332,6 +338,10 @@ class Graph(object):
     @property
     def edges(self) -> List[Edge]:
         return self._edges()
+
+    @property
+    def EdgesById(self) -> Dict[str, Edge]:
+        return {k: v for k, v in self._edges_dict.items()}
 
     def edges_by_id(self, edge_ids: List[str]):
         return self._edges(edge_ids)
@@ -363,43 +373,63 @@ class Graph(object):
         self.add_edges(edges)
 
     def add_node(self, node):
+        return self.add_nodes([node])
+
+    def add_nodes(self, nodes: Iterable[Node], prevent_rebuild: bool = False):
         """ If the vertex "vertex" is not in
             self.__graph_dict, a key "vertex" with an empty
             list as a value is added to the dictionary.
             Otherwise nothing has to be done.
         """
-        if node.name not in self._nodes_dict.keys():
-            self._nodes_dict[node.name] = node
-        self._build_maps()
+        for node in nodes:
+            if node.name not in self._nodes_dict.keys():
+                self._nodes_dict[node.name] = node
+
+        if not prevent_rebuild:
+            self._build_maps()
 
     def add_edges(self, edges: List[Edge]):
         """ assumes that edge is of type set, tuple or list;
             between two vertices can be multiple edges!
         """
+
+        def _add_edge(graph, edge: Edge):
+            if edge.id not in graph._edges_dict.keys():
+                graph._edges_dict[edge.id] = edge
+                graph.add_nodes([edge.start, edge.end], prevent_rebuild=True)
+            else:
+                raise ValueError(f"Edge with id: {edge.id} already exists")
+
         if isinstance(edges, list) and len(edges) > 0 and isinstance(edges[0], Edge):
             for edge in edges:
-                self._add_edge(edge)
+                _add_edge(self, edge)
         elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], Tuple):
             for start in edges.keys():
                 for end in edges[start]:
-                    start_node = self.nodes_at_point(start)[0]
-                    end_node = self.nodes_at_point(end)[0]
+                    start_node = self.node_by_name(start)
+                    end_node = self.node_by_name(end)
                     if start_node and end_node:
                         edge = Edge(start_node, end_node, naming_provider=self.naming_provider)
-                        self._add_edge(edge)
+                        _add_edge(self, edge)
         elif isinstance(edges, Edge):
-            self._add_edge(edges)
-        else:
-            raise ValueError()
+            _add_edge(self, edges)
+
+        self._build_maps()
 
     def remove_edges(self, edges):
         """ assumes that edge is of type set, tuple or list;
             between two vertices can be multiple edges!
         """
+
+        def _remove_edge(graph, edge: Edge):
+            edge = graph._edge_at(edge.start.pos, edge.end.pos)
+            if edge.id in graph._pos_edge_map.keys():
+                del graph._edges_dict[edge.id]
+
         print(f"len start {len(self._pos_edge_map)}")
         if isinstance(edges, list) and isinstance(edges[0], Edge):
             for edge in edges:
-                self._remove_edge(edge)
+                _remove_edge(self, edge)
         elif isinstance(edges, dict) and isinstance(list(edges.keys())[0], Tuple):
             for start in edges.keys():
                 for end in edges[start]:
@@ -407,9 +437,11 @@ class Graph(object):
                     end_node = self.nodes_at_point(end)[0]
                     if start_node and end_node:
                         edge = self._edge_at(start_node.pos, end_node.pos)
-                        self._remove_edge(edge)
+                        _remove_edge(self, edge)
         elif isinstance(edges, Edge):
-            self._remove_edge(edges)
+            _remove_edge(self, edges)
+
+        self._build_maps()
 
         print(f"len end {len(self._pos_edge_map)}")
 
@@ -503,19 +535,6 @@ class Graph(object):
             adjacents[:] = [x for x in adjacents if self._edge_at(node.pos, x.pos).enabled(ignored_disablers)]
 
         return adjacents
-
-    def _remove_edge(self, edge: Edge):
-        edge = self._edge_at(edge.start.pos, edge.end.pos)
-        if edge.id in self._pos_edge_map.keys():
-            del self._edges_dict[edge.id]
-        self._build_maps()
-
-    def _add_edge(self, edge: Edge):
-        if edge.id not in self._edges_dict.keys():
-            self._edges_dict[edge.id] = edge
-        else:
-            raise ValueError(f"Edge with id: {edge.id} already exists")
-        self._build_maps()
 
     def nodes_at_point(self, pos: Tuple[float, ...]) -> List[Node]:
         node_ids = self._pos_node_map.get(pos, [])
