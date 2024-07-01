@@ -9,6 +9,7 @@ import logging
 import copy
 import cooptools.geometry_utils.vector_utils as vec_util
 from cooptools.common import flattened_list_of_lists
+import random as rnd
 
 class Node(object):
     def __init__(self, name:str, pos: Tuple[float, ...]):
@@ -943,29 +944,27 @@ class Graph(object):
 
         return closest_nodes
 
+    def walk(self,
+             steps: int,
+             start_point: Node = None) -> Tuple[List[Node], List[Edge]]:
+        walk_nodes: List[Node] = []
+        walk_edges: List[Edge] = []
 
-    #TODO: enable a "walk" method. should accept a number of steps, an optional start point, and and optional end point
+        """Choose Start"""
+        old_node = start_point
+        if old_node is None:
+            old_node = rnd.choice(self.nodes)
+        walk_nodes.append(old_node)
 
-    # def walk(self, name: str, points: [(int, int)]) -> ({str, Node}, {str, Edge}):
-    #     walk_nodes: {str, Node} = {}
-    #     walk_edges: {str, Edge} = {}
-    #
-    #     old_point = None
-    #     for point in points:
-    #         new_point = Node(self.nodeIndex, point[0], point[1])
-    #         walk_nodes[str(self.nodeIndex)] = new_point
-    #         self.nodeIndex += 1
-    #         if old_point is not None:
-    #             walk_edges[str(self.edgeIndex)] = Edge(self.edgeIndex, old_point, new_point, EdgeConnection.OneWay)
-    #             self.edgeIndex += 1
-    #
-    #         old_point = new_point
-    #
-    #     self.nodes.update(walk_nodes)
-    #     self.edges.update(walk_edges)
-    #     ret = (walk_nodes, walk_edges)
-    #     self.walks[name] = ret
-    #     return ret
+        """Choose some random steps"""
+        for ii in range(steps):
+            eligible_edges = self.edges_from_node(node=old_node)
+            selected_edge = rnd.choice(eligible_edges)
+            walk_edges.append(selected_edge)
+            walk_nodes.append(selected_edge.end)
+            old_node = selected_edge.end
+
+        return walk_nodes, walk_edges
 
     def copy(self):
         copy = Graph(graph_dict=self._graph_dict)
@@ -977,4 +976,25 @@ class Graph(object):
         return copy
 
 if __name__ == "__main__":
-    pass
+    from pprint import pprint
+
+    def test_walk_1():
+        a = Node('a', (100, 100))
+        b = Node('b', (200, 100))
+        c = Node('c', (100, 200))
+        d = Node('d', (200, 200))
+        e = Node('e', (300, 300))
+        graph_dict = {
+            a: [b, c],
+            b: [a, d, e],
+            c: [a, d],
+            d: [b, c, e],
+            e: [b, d]
+        }
+
+        g = Graph(graph_dict=graph_dict)
+
+        pprint(g.walk(steps=5))
+
+
+    test_walk_1()
