@@ -40,40 +40,6 @@ class Node(object):
             f'{self.pos=}'.split('=')[0].replace('self.', ''): self.pos,
         }
 
-class _AStarMetrics():
-    def __init__(self, parent, graph_node: Node):
-        if not (isinstance(parent, _AStarMetrics) or parent is None):
-            raise TypeError(f"Astar parent must be AStarNode or None, {type(parent)} was given")
-
-        if not (isinstance(graph_node, Node)):
-            raise TypeError(f"Astar graph_node must be Node, {type(graph_node)} was given")
-
-        self.parent = parent
-        self.graph_node = graph_node
-        self.g = 0
-        self.h = 0
-        self.f = 0
-
-    def __eq__(self, other):
-        if isinstance(other, _AStarMetrics) and other.graph_node == self.graph_node:
-            return True
-        else:
-            return False
-
-    def __hash__(self):
-        return self.graph_node.__hash__()
-
-    def __repr__(self):
-        return f"{self.graph_node} g: {self.g} h: {self.h} f: {self.f}"
-
-
-class AStarResults:
-    def __init__(self, path, steps):
-        self.path = path
-        self.steps = steps
-
-
-
 
 class Edge(object):
     def __init__(self,
@@ -148,6 +114,41 @@ class Edge(object):
         }
 
 
+class _AStarMetrics():
+    def __init__(self, parent, graph_node: Node, edge: Edge):
+        if not (isinstance(parent, _AStarMetrics) or parent is None):
+            raise TypeError(f"Astar parent must be AStarNode or None, {type(parent)} was given")
+
+        if not (isinstance(graph_node, Node)):
+            raise TypeError(f"Astar graph_node must be Node, {type(graph_node)} was given")
+
+        self.parent = parent
+        self.graph_node = graph_node
+        self.edge = edge
+        self.g = 0
+        self.h = 0
+        self.f = 0
+
+    def __eq__(self, other):
+        if isinstance(other, _AStarMetrics) and other.graph_node == self.graph_node:
+            return True
+        else:
+            return False
+
+    def __hash__(self):
+        return self.graph_node.__hash__()
+
+    def __repr__(self):
+        return f"{self.graph_node} g: {self.g} h: {self.h} f: {self.f}"
+
+
+class AStarResults:
+    def __init__(self, path, edges, steps):
+        self.path = path
+        self.edges = edges
+        self.steps = steps
+
+
 class Graph(object):
 
     #TODO: Add a "from file" constructor cls method
@@ -205,8 +206,9 @@ class Graph(object):
                 if t.name not in nodes:
                     nodes[t.name] = f.as_jsonable_dict()
 
-                edge_between = self.edge_between(f, t)
-                edges.setdefault(edge_between.id, []).append(edge_between.as_jsonable_dict())
+                edges_between = self.edges_between(f, t)
+                for edge in edges_between:
+                    edges.setdefault(edge.id, []).append(edge.as_jsonable_dict())
 
         return {
             'nodes': nodes,
@@ -236,7 +238,7 @@ class Graph(object):
         ''' Dict[node_name, node_id]'''
         self._node_by_name_map = None
         ''' Dict[from, Dict[to, edge]]'''
-        self._node_to_node_edge_map = None
+        self._node_to_node_edge_map: Dict[str, Dict[str, List[str]]] = None
 
 
         for node in graph_dict.keys():
@@ -285,11 +287,11 @@ class Graph(object):
 
         return edges_by_pos_dict
 
-    def __generate_node_to_node_edge_map(self, edges):
+    def __generate_node_to_node_edge_map(self, edges) -> Dict[str, Dict[str, List[str]]]:
         edge_ids_by_node = {}
 
         for id, edge in edges.items():
-            edge_ids_by_node.setdefault(edge.start, {})[edge.end] = id
+            edge_ids_by_node.setdefault(edge.start, {}).setdefault(edge.end, []).append(id)
 
         return edge_ids_by_node
 
@@ -564,10 +566,11 @@ class Graph(object):
         return None
 
 
-    def edge_between(self, nodeA: Node, nodeB: Node):
+    def edges_between(self, nodeA: Node, nodeB: Node) -> List[Edge]:
         try:
-            edge_id = self._node_to_node_edge_map[nodeA][nodeB]
-            return self._edges_dict.get(edge_id, None)
+            edge_ids = self._node_to_node_edge_map[nodeA][nodeB]
+
+            return [self._edges_dict.get(id, None) for id in edge_ids]
         except:
             return None
 
@@ -742,8 +745,8 @@ class Graph(object):
         logging.debug(f"Performing A* over map of length: {len(self._graph_dict)}")
 
         # Create start and end node
-        start_iter = _AStarMetrics(None, start)
-        end_iter = _AStarMetrics(None, end)
+        start_iter = _AStarMetrics(None, start, None)
+        end_iter = _AStarMetrics(None, end, None)
 
         steps = {}
 
@@ -778,22 +781,37 @@ class Graph(object):
 
             # Found the goal
             if current_item == end_iter:
-                path = []
+                path_nodes = []
+                path_edges = []
                 current = current_item
                 while current is not None:
-                    path.append(current.graph_node)
+                    path_edges.append(current.edge)
+                    path_nodes.append(current.graph_node)
                     current = current.parent
 
-                results = AStarResults(path[::-1], steps)  # Return reversed path
+                results = AStarResults(path_nodes[::-1],
+                                       path_edges[::-1],
+                                       steps)  # Return reversed path
                 break
 
             # Generate children
             for new_node in self._graph_dict[current_item.graph_node]:  # Adjacent nodes
+                # edges
+                edges = self.edges_between(
+                    nodeA=current_item.graph_node,
+                    nodeB=new_node
+                )
+
                 # Dont evaluate this node if the edge is not enabled
-                if not self._edge_at(current_item.graph_node.pos, new_node.pos).enabled(ignored_disablers=set(ignored_disablers)):
+                enabled_edges = [x for x in edges if x.enabled(ignored_disablers=set(ignored_disablers))]
+                if len(enabled_edges) == 0:
                     continue
 
-                new_item = _AStarMetrics(current_item, new_node)
+                # find the min-lenght edge
+                enabled_edges.sort(key=lambda x: x.length)
+                min_edge = enabled_edges[0]
+
+                new_item = _AStarMetrics(current_item, new_node, min_edge)
 
                 if new_item in closed_set:
                     continue
@@ -816,7 +834,7 @@ class Graph(object):
             ''' No Path Found '''
             logging.error(f"Unable to find a path from [{start}] to [{end}]")
 
-            return AStarResults(None, steps)
+            return AStarResults(None, None, steps)
         else:
             ''' Log Path found '''
             logging.debug(f"Path found from [{start}] to [{end}] in {len(steps)} steps")
@@ -969,9 +987,10 @@ class Graph(object):
     def copy(self):
         copy = Graph(graph_dict=self._graph_dict)
         for edge in copy.edges:
-            og_edge = self.edge_between(edge.start, edge.end)
-            for disabler in og_edge.disablers():
-                edge.add_disabler(disabler)
+            og_edges = self.edges_between(edge.start, edge.end)
+            for edge in og_edges:
+                for disabler in edge.disablers():
+                    edge.add_disabler(disabler)
 
         return copy
 
