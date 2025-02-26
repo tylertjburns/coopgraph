@@ -47,11 +47,12 @@ class Edge(object):
                  nodeB: Node,
                  edge_weight: float = None,
                  naming_provider: Callable[[], str] = None,
-                 disablers: Iterable = None):
+                 disablers: Iterable = None,
+                 length: float = None):
         self.start = nodeA
         self.end = nodeB
         self._disablers = set()
-        self.length = vec_util.distance_between(nodeA.pos, nodeB.pos)
+        self.length = length if length is not None else vec_util.distance_between(nodeA.pos, nodeB.pos)
         self.id = naming_provider() if naming_provider else str(uuid.uuid4())
         self.weight = edge_weight
 
