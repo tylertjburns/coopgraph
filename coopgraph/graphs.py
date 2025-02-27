@@ -11,6 +11,8 @@ import cooptools.geometry_utils.vector_utils as vec_util
 from cooptools.common import flattened_list_of_lists
 import random as rnd
 
+logger = logging.getLogger(__name__)
+
 class Node(object):
     def __init__(self, name:str, pos: Tuple[float, ...]):
         if not isinstance(pos, Tuple) :
@@ -60,7 +62,7 @@ class Edge(object):
             [self.add_disabler(x) for x in disablers]
 
     def __str__(self):
-        return f"{self.start.name}-->{self.end.name}"
+        return f"{self.id}: {self.start.name}-->{self.end.name}"
 
     def __hash__(self):
         return hash(str(self.id))
@@ -114,6 +116,14 @@ class Edge(object):
             f'{self.weight=}'.split('=')[0].replace('self.', ''): self.weight,
         }
 
+
+class EdgeAlreadyExistsException(Exception):
+    def __init__(self,
+                 edge: Edge):
+        self.edge = edge
+        err = f"Edge with id: {self.edge.id} already exists"
+        logger.error(err)
+        super().__init__(err)
 
 class _AStarMetrics():
     def __init__(self, parent, graph_node: Node, edge: Edge):
@@ -405,7 +415,7 @@ class Graph(object):
                 graph._edges_dict[edge.id] = edge
                 graph.add_nodes([edge.start, edge.end], prevent_rebuild=True)
             else:
-                raise ValueError(f"Edge with id: {edge.id} already exists")
+                raise EdgeAlreadyExistsException(edge)
 
         if isinstance(edges, list) and len(edges) > 0 and isinstance(edges[0], Edge):
             for edge in edges:
